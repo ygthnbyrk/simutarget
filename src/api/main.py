@@ -1,7 +1,6 @@
 """FastAPI application for SimuTarget.ai."""
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy.orm import Session
 from .routes import personas, campaigns, health, subscriptions
 from src.database.connection import get_db
@@ -21,7 +20,6 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -30,16 +28,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# UTF-8 middleware - Turkce karakter destegi
-class UTF8Middleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        response = await call_next(request)
-        content_type = response.headers.get("content-type", "")
-        if "application/json" in content_type and "charset" not in content_type:
-            response.headers["content-type"] = "application/json; charset=utf-8"
-        return response
-
-app.add_middleware(UTF8Middleware)
 
 
 # Include routers
