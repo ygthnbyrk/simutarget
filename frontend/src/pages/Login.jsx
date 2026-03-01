@@ -40,7 +40,7 @@ function Login() {
         </Link>
 
         {/* Card */}
-        <div className="card" style={{ padding: '48px' }}>
+        <div className="card auth-card" style={{ padding: '48px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: '700', textAlign: 'center', marginBottom: '8px' }}>{t('auth.welcomeBack')}</h1>
           <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: '32px' }}>{t('auth.loginSubtitle')}</p>
 

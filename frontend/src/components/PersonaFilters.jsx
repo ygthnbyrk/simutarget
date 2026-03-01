@@ -136,7 +136,7 @@ function PersonaFilters({ planSlug, filters, onFiltersChange }) {
 
           {/* ── PRO: Demographic ── */}
           <FilterSection title={t('filters.demographic')} tier="Pro" unlocked={hasDemographic} t={t}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="grid-2-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               {/* Left col */}
               <div>
                 <Label text={t('filters.gender')} />
@@ -174,7 +174,7 @@ function PersonaFilters({ planSlug, filters, onFiltersChange }) {
 
           {/* ── BUSINESS: Behavioral ── */}
           <FilterSection title={t('filters.behavioral')} tier="Business" unlocked={hasBehavioral} t={t}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="grid-2-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
                 <Label text={t('filters.education')} />
                 <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
@@ -204,7 +204,7 @@ function PersonaFilters({ planSlug, filters, onFiltersChange }) {
 
           {/* ── ENTERPRISE: Advanced ── */}
           <FilterSection title={t('filters.advanced')} tier="Enterprise" unlocked={hasAdvanced} t={t}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+            <div className="grid-3-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
               <div>
                 <Label text={t('filters.techAdoption')} />
                 <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>

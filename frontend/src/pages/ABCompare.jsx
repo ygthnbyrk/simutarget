@@ -216,7 +216,7 @@ function ABCompare() {
             </div>
 
             {/* A ve B kampanya alanları */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+            <div className="grid-2-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
               {/* Campaign A */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
@@ -263,7 +263,7 @@ function ABCompare() {
             {/* Region */}
             <div style={{ marginBottom: '32px' }}>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>Target Region</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+              <div className="grid-4-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
                 {regions.map((r) => (
                   <button key={r.code} type="button" onClick={() => setRegion(r.code)}
                     style={{ padding: '20px', borderRadius: '12px', border: region === r.code ? '2px solid var(--color-accent-cyan)' : '1px solid var(--color-border)', background: region === r.code ? 'rgba(6, 182, 212, 0.1)' : 'var(--color-bg-secondary)', cursor: 'pointer', textAlign: 'center' }}>
@@ -343,7 +343,7 @@ function ABCompare() {
             </div>
 
             {/* A vs B Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+            <div className="grid-2-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
               <div className="card" style={{ padding: '28px', textAlign: 'center', border: testResults.winner === 'A' ? '2px solid var(--color-warning)' : '1px solid var(--color-border)', position: 'relative' }}>
                 {testResults.winner === 'A' && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: 'var(--color-warning)', color: '#000', padding: '4px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700' }}>WINNER</div>}
                 <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '10px', background: 'var(--color-accent-cyan)', color: '#000', fontSize: '18px', fontWeight: '700', margin: '0 auto 16px auto' }}>A</div>
@@ -359,7 +359,7 @@ function ABCompare() {
             </div>
 
             {/* Stats Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
+            <div className="grid-3-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
               <div className="card" style={{ padding: '24px', textAlign: 'center' }}><Users style={{ width: '28px', height: '28px', color: 'var(--color-accent-cyan)', margin: '0 auto 12px auto' }} /><div style={{ fontSize: '28px', fontWeight: '700' }}>{testResults.total_personas}</div><div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>Total Personas</div></div>
               <div className="card" style={{ padding: '24px', textAlign: 'center' }}><TrendingUp style={{ width: '28px', height: '28px', color: 'var(--color-accent-purple)', margin: '0 auto 12px auto' }} /><div style={{ fontSize: '28px', fontWeight: '700' }}>{testResults.avg_confidence.toFixed(1)}</div><div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>Avg Confidence</div></div>
               <div className="card" style={{ padding: '24px', textAlign: 'center' }}><XCircle style={{ width: '28px', height: '28px', color: 'var(--color-text-muted)', margin: '0 auto 12px auto' }} /><div style={{ fontSize: '28px', fontWeight: '700' }}>{testResults.neither_votes}</div><div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>Neither</div></div>

@@ -176,7 +176,7 @@ function Dashboard() {
 
         {/* Welcome */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          style={{ marginBottom: '36px', padding: '28px 32px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(139, 92, 246, 0.08))', border: '1px solid rgba(6, 182, 212, 0.12)' }}>
+          className="welcome-banner" style={{ marginBottom: '36px', padding: '28px 32px', borderRadius: '16px', background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(139, 92, 246, 0.08))', border: '1px solid rgba(6, 182, 212, 0.12)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <h1 style={{ fontSize: '26px', fontWeight: '700', marginBottom: '4px' }}>{t('dashboard.welcomeBack', { name: user?.name?.split(' ')[0] || '' })} 👋</h1>
@@ -193,7 +193,7 @@ function Dashboard() {
         </motion.div>
 
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '36px' }}>
+        <div className="grid-4-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '36px' }}>
           {isLoadingCampaigns ? <><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /></> : stats.map((stat, i) => {
             const Icon = stat.icon
             return (
@@ -233,7 +233,7 @@ function Dashboard() {
               {!canSeeCharts && <Link to="/dashboard/profile" style={{ fontSize: '12px', color: 'var(--color-accent-cyan)', textDecoration: 'none', fontWeight: '500' }}>{t('dashboard.upgradeForAnalytics')}</Link>}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: canSeeCharts ? '2fr 1fr' : '1fr', gap: '16px' }}>
+            <div className="grid-chart-main" style={{ display: 'grid', gridTemplateColumns: canSeeCharts ? '2fr 1fr' : '1fr', gap: '16px' }}>
               <div className="card" style={{ padding: '20px' }}>
                 <h3 style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text-muted)', marginBottom: '16px' }}>{t('dashboard.conversionTrend')}</h3>
                 <ResponsiveContainer width="100%" height={200}>
@@ -281,7 +281,7 @@ function Dashboard() {
             </div>
 
             {canSeeCharts && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
+              <div className="grid-chart-sub" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
                 <div className="card" style={{ padding: '20px' }}>
                   <h3 style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text-muted)', marginBottom: '16px' }}>{t('dashboard.testsByRegion')}</h3>
                   {regionData.length > 0 ? (
@@ -319,7 +319,7 @@ function Dashboard() {
         {/* Quick Actions */}
         <div style={{ marginBottom: '36px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>{t('dashboard.quickActions')}</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+          <div className="quick-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
             {quickActions.map((action, i) => {
               const Icon = action.icon
               return (
@@ -374,7 +374,7 @@ function Dashboard() {
             </div>
           ) : (
             <div className="card" style={{ overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <table className="mobile-card-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                     {[t('common.campaign'), t('common.type'), t('common.region'), t('common.conversion'), t('common.personas'), t('common.date')].map(h => (
@@ -418,7 +418,7 @@ function Dashboard() {
         {subscription && completedCampaigns.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="card" style={{ padding: '22px', marginBottom: '36px' }}>
             <h3 style={{ fontSize: '11px', fontWeight: '600', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '14px' }}>{t('dashboard.usageSummary')}</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+            <div className="grid-usage" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
               {[
                 { label: t('dashboard.creditsUsed'), value: totalUsed },
                 { label: t('dashboard.usageRate'), value: `${Math.round(usagePercentage || 0)}%` },
@@ -469,10 +469,6 @@ function Dashboard() {
         )}
       </div>
 
-      <style>{`
-        @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
     </DashboardLayout>
   )
 }

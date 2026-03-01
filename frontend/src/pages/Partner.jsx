@@ -77,7 +77,7 @@ function Partner() {
         <h2 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--color-text-primary)', marginBottom: '20px' }}>
           {t('partner.typesTitle')}
         </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div className="grid-2-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           {partnerTypes.map(type => (
             <div key={type} style={{
               padding: '20px',
@@ -118,7 +118,7 @@ function Partner() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="grid-2-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-muted)', marginBottom: '8px' }}>{t('partner.nameLabel')}</label>
                 <input style={inputStyle} placeholder={t('partner.namePlaceholder')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required
@@ -130,7 +130,7 @@ function Partner() {
                   onFocus={(e) => e.target.style.borderColor = 'var(--color-accent-cyan)'} onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'} />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="grid-2-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-muted)', marginBottom: '8px' }}>{t('partner.companyLabel')}</label>
                 <input style={inputStyle} placeholder={t('partner.companyPlaceholder')} value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} required
