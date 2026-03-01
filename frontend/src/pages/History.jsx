@@ -222,7 +222,7 @@ function History() {
 
         {/* Summary Stats */}
         {completed.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
+          <div className="grid-4-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
             {[
               { label: t('history.stats.totalTests'), value: completed.length, icon: BarChart3, color: '#06B6D4' },
               { label: t('history.stats.totalPersonas'), value: totalPersonas, icon: Users, color: '#8B5CF6' },
@@ -295,7 +295,7 @@ function History() {
           </div>
         ) : (
           <div className="card" style={{ overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="mobile-card-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                   {[t('common.campaign'), t('common.type'), t('common.region'), t('common.results'), t('common.personas'), t('common.date'), t('common.actions')].map((h, i) => (
@@ -433,7 +433,7 @@ function History() {
                               <div className="gradient-text" style={{ fontSize: '48px', fontWeight: '800' }}>{detailData.summary.conversion_rate?.toFixed(1)}%</div>
                               <div style={{ fontSize: '14px', color: 'var(--color-text-muted)' }}>{t('detail.conversionRate')}</div>
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '28px' }}>
+                            <div className="grid-4-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '28px' }}>
                               {[
                                 { icon: CheckCircle, value: detailData.summary.yes_count, label: t('detail.wouldBuy'), color: 'var(--color-success)' },
                                 { icon: XCircle, value: detailData.summary.no_count, label: t('detail.wouldNot'), color: 'var(--color-danger)' },

@@ -331,7 +331,7 @@ function CampaignTest() {
 
             <div style={{ marginBottom: '32px' }}>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>Target Region</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+              <div className="grid-4-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
                 {regions.map((r) => (
                   <button key={r.code} type="button" onClick={() => setFormData({ ...formData, region: r.code })}
                     style={{ padding: '20px', borderRadius: '12px', border: formData.region === r.code ? '2px solid var(--color-accent-cyan)' : '1px solid var(--color-border)', background: formData.region === r.code ? 'rgba(6, 182, 212, 0.1)' : 'var(--color-bg-secondary)', cursor: 'pointer', textAlign: 'center' }}>
@@ -403,7 +403,7 @@ function CampaignTest() {
               <div style={{ fontSize: '18px', color: 'var(--color-text-muted)' }}>{t('campaignTest.conversionRate')}</div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
+            <div className="grid-4-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
               <div className="card" style={{ padding: '24px', textAlign: 'center' }}><CheckCircle style={{ width: '28px', height: '28px', color: 'var(--color-success)', margin: '0 auto 12px auto' }} /><div style={{ fontSize: '32px', fontWeight: '700' }}>{testResults.yes_count}</div><div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>{t('campaignTest.wouldBuy')}</div></div>
               <div className="card" style={{ padding: '24px', textAlign: 'center' }}><XCircle style={{ width: '28px', height: '28px', color: 'var(--color-danger)', margin: '0 auto 12px auto' }} /><div style={{ fontSize: '32px', fontWeight: '700' }}>{testResults.no_count}</div><div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>{t('campaignTest.wouldNot')}</div></div>
               <div className="card" style={{ padding: '24px', textAlign: 'center' }}><Users style={{ width: '28px', height: '28px', color: 'var(--color-accent-cyan)', margin: '0 auto 12px auto' }} /><div style={{ fontSize: '32px', fontWeight: '700' }}>{testResults.total_personas}</div><div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>{t('campaignTest.total')}</div></div>
@@ -412,7 +412,7 @@ function CampaignTest() {
 
             {/* Demographics */}
             {demographics && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+              <div className="grid-2-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
                 <div className="card" style={{ padding: '28px' }}>
                   <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '24px' }}>{t('campaignTest.byAgeGroup')}</h3>
                   {demographics.by_age.map((g) => { const pct = g.yes + g.no > 0 ? (g.yes / (g.yes + g.no)) * 100 : 0; return (

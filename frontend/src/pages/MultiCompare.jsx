@@ -182,7 +182,7 @@ function MultiCompare() {
             {/* Region Selection */}
             <div style={{ marginBottom: '32px' }}>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>Target Region</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+              <div className="grid-4-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
                 {regions.map((r) => (
                   <button key={r.code} type="button" onClick={() => setRegion(r.code)}
                     style={{ padding: '20px', borderRadius: '12px', border: region === r.code ? '2px solid var(--color-accent-cyan)' : '1px solid var(--color-border)', background: region === r.code ? 'rgba(6, 182, 212, 0.1)' : 'var(--color-bg-secondary)', cursor: 'pointer', textAlign: 'center' }}>
@@ -270,7 +270,7 @@ function MultiCompare() {
             </div>
 
             {/* Option Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${testResults.options.length}, 1fr)`, gap: '16px', marginBottom: '32px' }}>
+            <div className="grid-2-responsive" style={{ display: 'grid', gridTemplateColumns: `repeat(${testResults.options.length}, 1fr)`, gap: '16px', marginBottom: '32px' }}>
               {testResults.options.map((opt, i) => (
                 <div key={opt.label} className="card" style={{ padding: '28px', textAlign: 'center', border: i === 0 ? '2px solid var(--color-warning)' : '1px solid var(--color-border)', position: 'relative' }}>
                   {i === 0 && <div style={{ position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)', background: 'var(--color-warning)', color: '#000', padding: '4px 16px', borderRadius: '12px', fontSize: '12px', fontWeight: '700' }}>{t('multiCompare.winnerBadge')}</div>}
