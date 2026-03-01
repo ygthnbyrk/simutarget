@@ -8,6 +8,8 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
 import useAuthStore from '../stores/authStore'
 import logoNavbar from '../assets/simutarget-logo-navbar.png'
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+
 function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const navigate = useNavigate()
@@ -44,27 +46,31 @@ function Login() {
           <h1 style={{ fontSize: '28px', fontWeight: '700', textAlign: 'center', marginBottom: '8px' }}>{t('auth.welcomeBack')}</h1>
           <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', marginBottom: '32px' }}>{t('auth.loginSubtitle')}</p>
 
-          {/* Google Sign In */}
-          <div style={{ marginBottom: '32px' }}>
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                theme="filled_black"
-                size="large"
-                width="352"
-                text="signin_with"
-                shape="rectangular"
-              />
-            </div>
-          </div>
+          {/* Google Sign In - only if client ID is configured */}
+          {GOOGLE_CLIENT_ID && (
+            <>
+              <div style={{ marginBottom: '32px' }}>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={handleGoogleError}
+                    theme="filled_black"
+                    size="large"
+                    width="352"
+                    text="signin_with"
+                    shape="rectangular"
+                  />
+                </div>
+              </div>
 
-          {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
-            <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
-            <span style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}>{t('auth.orLoginWith')}</span>
-            <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
-          </div>
+              {/* Divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
+                <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
+                <span style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}>{t('auth.orLoginWith')}</span>
+                <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
+              </div>
+            </>
+          )}
 
           {error && (
             <div style={{ marginBottom: '24px', padding: '16px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)', fontSize: '14px' }}>

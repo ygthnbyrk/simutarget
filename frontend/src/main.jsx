@@ -9,29 +9,14 @@ import './i18n'
 
 
 // Google OAuth Client ID - .env dosyasından alınır
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
-
-function Root() {
-  const app = (
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  )
-
-  // GoogleOAuthProvider sadece clientId varsa sarmalansın
-  if (GOOGLE_CLIENT_ID) {
-    return (
-      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-        {app}
-      </GoogleOAuthProvider>
-    )
-  }
-
-  return app
-}
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <Root />
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   </React.StrictMode>
 )
