@@ -1,0 +1,32 @@
+"""MENA demographics data."""
+MENA_DEMOGRAPHICS = {
+    "countries": ["UAE", "Saudi Arabia", "Egypt", "Qatar", "Kuwait"],
+    "cities": {
+        "Dubai": {"weight": 0.20}, "Abu Dhabi": {"weight": 0.10}, "Riyadh": {"weight": 0.15},
+        "Jeddah": {"weight": 0.10}, "Cairo": {"weight": 0.15}, "Alexandria": {"weight": 0.06},
+        "Doha": {"weight": 0.08}, "Kuwait City": {"weight": 0.08}, "Sharjah": {"weight": 0.04}, "Dammam": {"weight": 0.04},
+    },
+    "male_names": ["Mohammed", "Ahmed", "Ali", "Omar", "Khalid", "Hassan", "Ibrahim", "Youssef", "Faisal", "Abdullah", "Saeed", "Rashid", "Tariq", "Nasser", "Sultan", "Hamad", "Majed", "Waleed", "Fahad", "Mansour"],
+    "female_names": ["Fatima", "Aisha", "Maryam", "Sara", "Noor", "Hana", "Layla", "Reem", "Dana", "Lina", "Amina", "Yasmin", "Salma", "Huda", "Rana", "Dina", "Malak", "Joud", "Shahd", "Asma"],
+    "last_names": ["Al-Rashid", "Al-Saud", "Al-Maktoum", "Al-Thani", "Al-Sabah", "El-Sayed", "Hassan", "Ibrahim", "Al-Qahtani", "Al-Harbi", "Al-Ghamdi", "Al-Shehri", "Mahmoud", "Abdullah", "Al-Dosari", "Al-Mutairi", "Khalil", "Nasser", "Al-Otaibi", "Al-Malki"],
+    "occupations": {
+        "Engineer": {"age_range": [24, 65], "education": ["Üniversite", "Yüksek Lisans"], "gender_ratio": 0.8, "income": ["Orta", "Orta-Yüksek", "Yüksek"]},
+        "Doctor": {"age_range": [28, 70], "education": ["Üniversite", "Yüksek Lisans", "Doktora"], "gender_ratio": 0.6, "income": ["Orta-Yüksek", "Yüksek"]},
+        "Banker": {"age_range": [24, 60], "education": ["Üniversite", "Yüksek Lisans"], "gender_ratio": 0.65, "income": ["Orta-Yüksek", "Yüksek"]},
+        "Government Official": {"age_range": [28, 65], "education": ["Üniversite", "Yüksek Lisans"], "gender_ratio": 0.75, "income": ["Orta", "Orta-Yüksek"]},
+        "IT Manager": {"age_range": [26, 55], "education": ["Üniversite", "Yüksek Lisans"], "gender_ratio": 0.75, "income": ["Orta-Yüksek", "Yüksek"]},
+        "Investment Analyst": {"age_range": [26, 55], "education": ["Üniversite", "Yüksek Lisans"], "gender_ratio": 0.7, "income": ["Orta-Yüksek", "Yüksek"]},
+        "Sales Representative": {"age_range": [20, 55], "education": ["Lise", "Ön Lisans", "Üniversite"], "gender_ratio": 0.7, "income": ["Orta-Düşük", "Orta"]},
+        "Electrician": {"age_range": [20, 60], "education": ["Lise", "Ön Lisans"], "gender_ratio": 0.98, "income": ["Düşük", "Orta-Düşük"]},
+        "Driver": {"age_range": [22, 60], "education": ["İlkokul", "Ortaokul", "Lise"], "gender_ratio": 0.99, "income": ["Düşük", "Orta-Düşük"]},
+        "Security Guard": {"age_range": [22, 55], "education": ["İlkokul", "Ortaokul"], "gender_ratio": 0.99, "income": ["Düşük"]},
+        "Shop Worker": {"age_range": [18, 50], "education": ["Ortaokul", "Lise"], "gender_ratio": 0.7, "income": ["Düşük", "Orta-Düşük"]},
+        "Professor": {"age_range": [35, 70], "education": ["Doktora"], "gender_ratio": 0.7, "income": ["Orta-Yüksek", "Yüksek"]},
+        "Architect": {"age_range": [26, 65], "education": ["Üniversite", "Yüksek Lisans"], "gender_ratio": 0.6, "income": ["Orta", "Orta-Yüksek"]},
+        "Homemaker": {"age_range": [20, 75], "education": ["İlkokul", "Ortaokul", "Lise", "Ön Lisans", "Üniversite"], "gender_ratio": 0.0, "income": ["Düşük", "Orta-Düşük", "Orta"]},
+        "Retired": {"age_range": [55, 80], "education": ["İlkokul", "Ortaokul", "Lise", "Ön Lisans", "Üniversite", "Yüksek Lisans", "Doktora"], "gender_ratio": 0.5, "income": ["Orta-Düşük", "Orta"]},
+        "University Student": {"age_range": [18, 28], "education": ["Lise", "Ön Lisans", "Üniversite", "Yüksek Lisans"], "gender_ratio": 0.5, "income": ["Düşük"]},
+    },
+    "platforms_by_age": {"young": ["Instagram", "TikTok", "Snapchat", "YouTube"], "middle": ["Instagram", "WhatsApp", "Twitter", "YouTube"], "older": ["WhatsApp", "Facebook", "YouTube"]},
+    "payment_preferences": {"Kredi Kartı": 0.35, "Banka Kartı": 0.20, "Kapıda Ödeme": 0.25, "Dijital Cüzdan": 0.20},
+}

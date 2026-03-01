@@ -1,5 +1,16 @@
-fastapi==0.115.0
-uvicorn==0.30.0
-sqlalchemy==2.0.35
-psycopg2-binary==2.9.9
-python-dotenv==1.0.1
+# SimuTarget.ai Dependencies
+# ==========================
+
+# Core
+pydantic>=2.0.0
+openai>=1.0.0
+
+# Async support
+aiohttp>=3.8.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# Development (optional)
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
