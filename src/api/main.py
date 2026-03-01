@@ -11,7 +11,6 @@ from src.api.auth import (
 )
 from src.database.models import User
 from src.database.credit_service import CreditService, FeatureGateService
-import os
 
 # Create FastAPI app
 app = FastAPI(
@@ -22,13 +21,11 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-import os
 
 # CORS middleware
-cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
