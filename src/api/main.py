@@ -22,6 +22,8 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+import os
+
 # CORS middleware
 cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
@@ -31,8 +33,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
 # UTF-8 middleware - Turkce karakter destegi
 class UTF8Middleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
