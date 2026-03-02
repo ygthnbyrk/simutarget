@@ -8,7 +8,7 @@ import useCreditStore from '../stores/creditStore'
 
 function Profile() {
   const { user } = useAuthStore()
-  const { balance, subscription, plans, fetchPlans, changePlan, isLoading } = useCreditStore()
+  const { balance, subscription, plans, fetchPlans, changePlan, subscribe, isLoading } = useCreditStore()
   const [selectedPlan, setSelectedPlan] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const { t } = useTranslation()
@@ -35,8 +35,17 @@ function Profile() {
 
   const handleUpgrade = async () => {
     if (!selectedPlan) return
-    const result = await changePlan(selectedPlan)
-    if (result.success) { setShowModal(false); setSelectedPlan(null) }
+    try {
+      let result
+      if (!subscription) {
+        result = await subscribe(selectedPlan)
+      } else {
+        result = await changePlan(selectedPlan)
+      }
+      if (result?.success) { setShowModal(false); setSelectedPlan(null) }
+    } catch (err) {
+      console.error('Plan change error:', err)
+    }
   }
 
   return (
@@ -73,14 +82,14 @@ function Profile() {
                 <CreditCard style={{ width: '18px', height: '18px' }} />
                 <span style={{ fontSize: '14px' }}>{t('profile.currentPlan')}</span>
               </div>
-              <div className="gradient-text" style={{ fontSize: '28px', fontWeight: '700' }}>{subscription?.plan_name || 'Basic'}</div>
+              <div className="gradient-text" style={{ fontSize: '28px', fontWeight: '700' }}>{subscription?.plan_name || t('dashboard.noSubscription')}</div>
             </div>
             <div style={{ padding: '24px', background: 'var(--color-bg-tertiary)', borderRadius: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
                 <Calendar style={{ width: '18px', height: '18px' }} />
                 <span style={{ fontSize: '14px' }}>{t('profile.creditsRemaining')}</span>
               </div>
-              <div style={{ fontSize: '28px', fontWeight: '700' }}>{balance} <span style={{ fontSize: '16px', color: 'var(--color-text-muted)' }}>/ {subscription?.credits_monthly || 50}</span></div>
+              <div style={{ fontSize: '28px', fontWeight: '700' }}>{balance} <span style={{ fontSize: '16px', color: 'var(--color-text-muted)' }}>/ {subscription?.credits_monthly || 0}</span></div>
             </div>
           </div>
         </motion.div>
