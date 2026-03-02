@@ -223,7 +223,15 @@
     "noSubscription": "No active subscription",
     "getSubscription": "Get a Subscription",
     "getSubscriptionDesc": "Choose a plan to unlock all features and start testing campaigns.",
-    "viewPlans": "View Plans"
+    "viewPlans": "View Plans",
+    "selectPlan": "Select a plan to get started",
+    "choosePlan": "Choose a Plan",
+    "choosePlanDesc": "Choose a plan to unlock all features and start testing campaigns.",
+    "planType": "Plan Type",
+    "oneTime": "One-time",
+    "planExpires": "Plan Expires",
+    "proFeature": "Pro Feature",
+    "runDifferentTypes": "Try different test types"
   },
 
   "campaignTest": {
