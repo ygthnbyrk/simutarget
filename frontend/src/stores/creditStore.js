@@ -74,6 +74,20 @@ const useCreditStore = create((set, get) => ({
     }
   },
 
+  cancelSubscription: async () => {
+    set({ isLoading: true, error: null })
+    try {
+      const response = await subscriptionsAPI.cancel()
+      set({ subscription: null, isLoading: false })
+      get().fetchBalance()
+      return { success: true, message: response.data.message }
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Cancellation failed'
+      set({ error: message, isLoading: false })
+      return { success: false, error: message }
+    }
+  },
+
   checkCredits: async (amount) => {
     try {
       const response = await creditsAPI.check(amount)

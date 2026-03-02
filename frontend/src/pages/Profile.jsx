@@ -8,9 +8,10 @@ import useCreditStore from '../stores/creditStore'
 
 function Profile() {
   const { user } = useAuthStore()
-  const { balance, subscription, plans, fetchPlans, changePlan, subscribe, isLoading } = useCreditStore()
+  const { balance, subscription, plans, fetchPlans, changePlan, subscribe, cancelSubscription, isLoading } = useCreditStore()
   const [selectedPlan, setSelectedPlan] = useState(null)
   const [showModal, setShowModal] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
   const { t } = useTranslation()
 
   useEffect(() => { fetchPlans() }, [])
@@ -46,6 +47,11 @@ function Profile() {
     } catch (err) {
       console.error('Plan change error:', err)
     }
+  }
+
+  const handleCancel = async () => {
+    const result = await cancelSubscription()
+    if (result?.success) { setShowCancelModal(false) }
   }
 
   return (
@@ -92,6 +98,13 @@ function Profile() {
               <div style={{ fontSize: '28px', fontWeight: '700' }}>{balance} <span style={{ fontSize: '16px', color: 'var(--color-text-muted)' }}>/ {subscription?.credits_monthly || 0}</span></div>
             </div>
           </div>
+          {subscription && (
+            <div style={{ marginTop: '16px', textAlign: 'right' }}>
+              <button onClick={() => setShowCancelModal(true)} style={{ background: 'none', border: 'none', color: 'var(--color-danger)', fontSize: '13px', cursor: 'pointer', padding: '8px 0', opacity: 0.7, transition: 'opacity 0.2s' }} onMouseEnter={e => e.target.style.opacity = 1} onMouseLeave={e => e.target.style.opacity = 0.7}>
+                {t('profile.cancelSubscription')}
+              </button>
+            </div>
+          )}
         </motion.div>
 
         {/* Plan Comparison */}
@@ -154,7 +167,7 @@ function Profile() {
           </div>
         </motion.div>
 
-        {/* Modal */}
+        {/* Plan Change Modal */}
         {showModal && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', padding: '24px' }}>
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card" style={{ padding: '32px', maxWidth: '400px', width: '100%' }}>
@@ -166,6 +179,24 @@ function Profile() {
                 <button onClick={() => { setShowModal(false); setSelectedPlan(null) }} className="btn btn-secondary" style={{ flex: 1, padding: '14px' }}>{t('common.cancel')}</button>
                 <button onClick={handleUpgrade} disabled={isLoading} className="btn btn-primary" style={{ flex: 1, padding: '14px' }}>
                   {isLoading ? <Loader2 style={{ width: '18px', height: '18px', animation: 'spin 1s linear infinite' }} /> : t('common.confirm')}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Cancel Subscription Modal */}
+        {showCancelModal && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', padding: '24px' }}>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card" style={{ padding: '32px', maxWidth: '400px', width: '100%' }}>
+              <h3 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '16px', color: 'var(--color-danger)' }}>{t('profile.cancelSubscription')}</h3>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: '32px' }}>
+                {t('profile.cancelConfirm', { plan: subscription?.plan_name })}
+              </p>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button onClick={() => setShowCancelModal(false)} className="btn btn-secondary" style={{ flex: 1, padding: '14px' }}>{t('common.close')}</button>
+                <button onClick={handleCancel} disabled={isLoading} style={{ flex: 1, padding: '14px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: '600', background: 'var(--color-danger)', color: 'white', opacity: isLoading ? 0.6 : 1 }}>
+                  {isLoading ? <Loader2 style={{ width: '18px', height: '18px', animation: 'spin 1s linear infinite' }} /> : t('profile.confirmCancel')}
                 </button>
               </div>
             </motion.div>

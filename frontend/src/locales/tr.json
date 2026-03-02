@@ -492,6 +492,9 @@
     "switch": "Değiştir",
     "changePlan": "Plan Değiştir",
     "changePlanConfirm": "{{plan}} planına geçmek istiyor musunuz?",
+    "cancelSubscription": "Aboneliği İptal Et",
+    "cancelConfirm": "{{plan}} aboneliğinizi iptal etmek istediğinize emin misiniz? Kalan kredileriniz dönem sonuna kadar kullanılabilir.",
+    "confirmCancel": "Evet, İptal Et",
     "plan": "Plan"
   },
 
