@@ -51,7 +51,7 @@ export const plansAPI = {
 export const subscriptionsAPI = {
   current: () => api.get('/subscriptions/current'),
   subscribe: (planSlug) => api.post('/subscriptions/subscribe', { plan_slug: planSlug }),
-  change: (planSlug) => api.post('/subscriptions/change', { plan_slug: planSlug }),
+  change: (planSlug) => api.post('/subscriptions/change', { new_plan_slug: planSlug }),
   cancel: () => api.post('/subscriptions/cancel'),
 }
 
