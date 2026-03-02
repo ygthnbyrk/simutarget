@@ -223,7 +223,15 @@
     "noSubscription": "Aktif abonelik yok",
     "getSubscription": "Abonelik Al",
     "getSubscriptionDesc": "Tüm özelliklerin kilidini açmak ve kampanya testine başlamak için bir plan seçin.",
-    "viewPlans": "Planları Gör"
+    "viewPlans": "Planları Gör",
+    "selectPlan": "Başlamak için bir plan seçin",
+    "choosePlan": "Plan Seçin",
+    "choosePlanDesc": "Tüm özelliklerin kilidini açmak ve kampanya testine başlamak için bir plan seçin.",
+    "planType": "Plan Türü",
+    "oneTime": "Tek Seferlik",
+    "planExpires": "Plan Bitiş",
+    "proFeature": "Pro Özelliği",
+    "runDifferentTypes": "Farklı test türlerini deneyin"
   },
 
   "campaignTest": {
