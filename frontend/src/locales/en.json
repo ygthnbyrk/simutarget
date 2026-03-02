@@ -492,6 +492,9 @@
     "switch": "Switch",
     "changePlan": "Change Plan",
     "changePlanConfirm": "Switch to the {{plan}} plan?",
+    "cancelSubscription": "Cancel Subscription",
+    "cancelConfirm": "Are you sure you want to cancel your {{plan}} subscription? Your remaining credits will be available until the end of the billing period.",
+    "confirmCancel": "Yes, Cancel",
     "plan": "Plan"
   },
 
