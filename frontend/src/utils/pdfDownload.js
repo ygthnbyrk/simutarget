@@ -3,7 +3,10 @@
  * Downloads campaign PDF report via authenticated API call
  */
 
-const API_URL = ''
+const API_BASE = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL}/api/v1` 
+  : '/api/v1'
+
 export async function downloadCampaignPDF(campaignId, lang = 'en') {
   const token = localStorage.getItem('token')
   if (!token) {
@@ -11,7 +14,7 @@ export async function downloadCampaignPDF(campaignId, lang = 'en') {
   }
 
   const response = await fetch(
-    `${API_URL}/api/v1/campaigns/${campaignId}/download-pdf?lang=${lang}`,
+    `${API_BASE}/campaigns/${campaignId}/download-pdf?lang=${lang}`,
     {
       method: 'GET',
       headers: {
