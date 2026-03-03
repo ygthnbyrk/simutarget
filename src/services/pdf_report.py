@@ -1,1121 +1,805 @@
 """
-SimuTarget PDF Report Generator
-Pro: Clean, professional summary report
-Business: Detailed infographic with charts and demographics
+SimuTarget PDF Report Generator v2 - Complete Redesign
+Pro: Clean professional summary (1-2 pages)
+Business: Detailed infographic with charts, demographics, reasoning (3-5 pages)
 """
 
-import io
-import os
-import json
-import math
+import io, os, json, math
 from datetime import datetime
-
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm, cm
-from reportlab.lib.colors import HexColor, white, black, Color
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.lib.colors import HexColor
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
-from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    PageBreak, Image, KeepTogether
-)
-from reportlab.pdfgen import canvas
-from reportlab.graphics.shapes import Drawing, Rect, String, Circle, Line, Wedge
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.graphics.charts.piecharts import Pie
-from reportlab.graphics.charts.barcharts import VerticalBarChart
 from reportlab.graphics import renderPDF
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-# ─── REGISTER TTF FONTS (Turkish character support) ───────
-import platform
-
+# --- FONT ---
 def _find_font_dir():
-    candidates = [
-        os.path.join(os.path.dirname(__file__), "fonts"),
-        "/usr/share/fonts/truetype/dejavu",
-        "C:/Windows/Fonts",
-    ]
-    for d in candidates:
+    for d in [os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts"),
+              "/usr/share/fonts/truetype/dejavu", "C:/Windows/Fonts"]:
         if os.path.isfile(os.path.join(d, "DejaVuSans.ttf")):
             return d
     return None
 
-_FONT_DIR = _find_font_dir()
-_FONT_REGISTERED = False
+_FD = _find_font_dir()
+_FR = False
 
-def _register_fonts():
-    global _FONT_REGISTERED
-    if _FONT_REGISTERED:
-        return
-    if not _FONT_DIR:
-        print("Font warning: DejaVuSans not found. Falling back to Helvetica.")
-        return
+def _reg():
+    global _FR
+    if _FR:
+        return True
+    if not _FD:
+        return False
     try:
-        pdfmetrics.registerFont(TTFont('SimuFont', f'{_FONT_DIR}/DejaVuSans.ttf'))
-        pdfmetrics.registerFont(TTFont('SimuFont-Bold', f'{_FONT_DIR}/DejaVuSans-Bold.ttf'))
-        pdfmetrics.registerFont(TTFont('SimuFont-Oblique', f'{_FONT_DIR}/DejaVuSans-Oblique.ttf'))
-        pdfmetrics.registerFont(TTFont('SimuFont-BoldOblique', f'{_FONT_DIR}/DejaVuSans-BoldOblique.ttf'))
+        pdfmetrics.registerFont(TTFont("SimuFont", os.path.join(_FD, "DejaVuSans.ttf")))
+        pdfmetrics.registerFont(TTFont("SimuFont-Bold", os.path.join(_FD, "DejaVuSans-Bold.ttf")))
+        pdfmetrics.registerFont(TTFont("SimuFont-Oblique", os.path.join(_FD, "DejaVuSans-Oblique.ttf")))
+        pdfmetrics.registerFont(TTFont("SimuFont-BoldOblique", os.path.join(_FD, "DejaVuSans-BoldOblique.ttf")))
         from reportlab.pdfbase.pdfmetrics import registerFontFamily
-        registerFontFamily('SimuFont',
-                           normal='SimuFont',
-                           bold='SimuFont-Bold',
-                           italic='SimuFont-Oblique',
-                           boldItalic='SimuFont-BoldOblique')
-        _FONT_REGISTERED = True
-    except Exception as e:
-        print(f"Font registration warning: {e}. Falling back to Helvetica.")
-# Register on import
-_register_fonts()
+        registerFontFamily("SimuFont", normal="SimuFont", bold="SimuFont-Bold",
+                           italic="SimuFont-Oblique", boldItalic="SimuFont-BoldOblique")
+        _FR = True
+        return True
+    except Exception:
+        return False
 
-FONT = 'SimuFont' if _FONT_REGISTERED else 'Helvetica'
-FONT_BOLD = 'SimuFont-Bold' if _FONT_REGISTERED else 'Helvetica-Bold'
+_reg()
+F = "SimuFont" if _FR else "Helvetica"
+FB = "SimuFont-Bold" if _FR else "Helvetica-Bold"
 
+# --- COLORS ---
+CYAN = HexColor("#06B6D4")
+PURPLE = HexColor("#8B5CF6")
+DARK = HexColor("#0F172A")
+GREEN = HexColor("#10B981")
+RED = HexColor("#EF4444")
+AMBER = HexColor("#F59E0B")
+PINK = HexColor("#EC4899")
+BLUE = HexColor("#3B82F6")
+TEAL = HexColor("#14B8A6")
+W = HexColor("#FFFFFF")
+BGL = HexColor("#F8FAFC")
+BGG = HexColor("#F1F5F9")
+BGB = HexColor("#E2E8F0")
+TD = HexColor("#0F172A")
+TB = HexColor("#334155")
+TL = HexColor("#64748B")
+CC = [CYAN, PURPLE, GREEN, AMBER, RED, PINK, BLUE, TEAL]
+CYAN_L = HexColor("#ECFEFF")
 
-# ─── COLORS ────────────────────────────────────────────────
-BRAND_CYAN = HexColor("#06B6D4")
-BRAND_PURPLE = HexColor("#8B5CF6")
-BRAND_DARK = HexColor("#0F172A")
-BRAND_DARK_2 = HexColor("#1E293B")
-BRAND_DARK_3 = HexColor("#334155")
-TEXT_PRIMARY = HexColor("#F1F5F9")
-TEXT_SECONDARY = HexColor("#94A3B8")
-TEXT_MUTED = HexColor("#64748B")
-SUCCESS_GREEN = HexColor("#10B981")
-DANGER_RED = HexColor("#EF4444")
-WARNING_AMBER = HexColor("#F59E0B")
-WHITE = HexColor("#FFFFFF")
-CHART_COLORS = [
-    HexColor("#06B6D4"), HexColor("#8B5CF6"), HexColor("#10B981"),
-    HexColor("#F59E0B"), HexColor("#EF4444"), HexColor("#EC4899"),
-    HexColor("#3B82F6"), HexColor("#14B8A6"),
-]
-
-# Light theme colors for PDF (dark bg doesn't print well)
-BG_WHITE = HexColor("#FFFFFF")
-BG_LIGHT = HexColor("#F8FAFC")
-BG_GRAY = HexColor("#F1F5F9")
-BG_BORDER = HexColor("#E2E8F0")
-TEXT_DARK = HexColor("#0F172A")
-TEXT_BODY = HexColor("#334155")
-TEXT_LIGHT = HexColor("#64748B")
-
-
-def _get_styles():
-    """Create custom paragraph styles for reports."""
-    styles = getSampleStyleSheet()
-    
-    styles.add(ParagraphStyle(
-        name='ReportTitle',
-        fontName=FONT_BOLD,
-        fontSize=28,
-        leading=34,
-        textColor=TEXT_DARK,
-        spaceAfter=4,
-    ))
-    styles.add(ParagraphStyle(
-        name='ReportSubtitle',
-        fontName=FONT,
-        fontSize=12,
-        leading=16,
-        textColor=TEXT_LIGHT,
-        spaceAfter=24,
-    ))
-    styles.add(ParagraphStyle(
-        name='SectionTitle',
-        fontName=FONT_BOLD,
-        fontSize=16,
-        leading=22,
-        textColor=TEXT_DARK,
-        spaceBefore=20,
-        spaceAfter=10,
-    ))
-    styles.add(ParagraphStyle(
-        name='SubSection',
-        fontName=FONT_BOLD,
-        fontSize=12,
-        leading=16,
-        textColor=TEXT_BODY,
-        spaceBefore=12,
-        spaceAfter=6,
-    ))
-    styles.add(ParagraphStyle(
-        name='BodyText2',
-        fontName=FONT,
-        fontSize=10,
-        leading=14,
-        textColor=TEXT_BODY,
-        spaceAfter=6,
-    ))
-    styles.add(ParagraphStyle(
-        name='SmallText',
-        fontName=FONT,
-        fontSize=8,
-        leading=10,
-        textColor=TEXT_LIGHT,
-    ))
-    styles.add(ParagraphStyle(
-        name='MetricValue',
-        fontName=FONT_BOLD,
-        fontSize=24,
-        leading=28,
-        textColor=BRAND_CYAN,
-        alignment=TA_CENTER,
-    ))
-    styles.add(ParagraphStyle(
-        name='MetricLabel',
-        fontName=FONT,
-        fontSize=9,
-        leading=12,
-        textColor=TEXT_LIGHT,
-        alignment=TA_CENTER,
-    ))
-    styles.add(ParagraphStyle(
-        name='FooterText',
-        fontName=FONT,
-        fontSize=7,
-        leading=10,
-        textColor=TEXT_LIGHT,
-        alignment=TA_CENTER,
-    ))
-    
-    return styles
+# --- L10N ---
+_T = {
+    "report": {"en": "Campaign Analysis Report", "tr": "Kampanya Analiz Raporu"},
+    "name": {"en": "Campaign Name", "tr": "Kampanya Adi"},
+    "content": {"en": "Campaign Content", "tr": "Kampanya Icerigi"},
+    "type": {"en": "Test Type", "tr": "Test Turu"},
+    "region": {"en": "Region", "tr": "Bolge"},
+    "date": {"en": "Test Date", "tr": "Test Tarihi"},
+    "metrics": {"en": "Key Metrics", "tr": "Temel Metrikler"},
+    "approval": {"en": "Approval Rate", "tr": "Onay Orani"},
+    "avgconf": {"en": "Avg Confidence", "tr": "Ort. Guven"},
+    "total": {"en": "Total Personas", "tr": "Toplam Persona"},
+    "yes": {"en": "Yes", "tr": "Evet"},
+    "no": {"en": "No", "tr": "Hayir"},
+    "yes_v": {"en": "Yes Votes", "tr": "Evet Oylari"},
+    "no_v": {"en": "No Votes", "tr": "Hayir Oylari"},
+    "overview": {"en": "Results Overview", "tr": "Sonuclara Genel Bakis"},
+    "demo": {"en": "Demographic Analysis", "tr": "Demografik Analiz"},
+    "gender": {"en": "By Gender", "tr": "Cinsiyete Gore"},
+    "agegrp": {"en": "By Age Group", "tr": "Yas Grubuna Gore"},
+    "income": {"en": "By Income Level", "tr": "Gelir Duzeyine Gore"},
+    "responses": {"en": "Detailed Persona Responses", "tr": "Detayli Persona Yanitlari"},
+    "persona": {"en": "Persona", "tr": "Persona"},
+    "age": {"en": "Age", "tr": "Yas"},
+    "gen": {"en": "Gender", "tr": "Cinsiyet"},
+    "city": {"en": "City", "tr": "Sehir"},
+    "occ": {"en": "Occupation", "tr": "Meslek"},
+    "dec": {"en": "Decision", "tr": "Karar"},
+    "conf": {"en": "Conf.", "tr": "Guven"},
+    "reason": {"en": "Reasoning", "tr": "Gerekce"},
+    "single": {"en": "Single Campaign Test", "tr": "Tekli Kampanya Testi"},
+    "ab": {"en": "A/B Comparison", "tr": "A/B Karsilastirma"},
+    "multi": {"en": "Multi Comparison", "tr": "Coklu Karsilastirma"},
+    "optA": {"en": "Option A", "tr": "Secenek A"},
+    "optB": {"en": "Option B", "tr": "Secenek B"},
+    "neither": {"en": "Neither", "tr": "Hicbiri"},
+    "votes": {"en": "Vote Distribution", "tr": "Oy Dagilimi"},
+    "choice": {"en": "Choice", "tr": "Tercih"},
+    "confdist": {"en": "Confidence Distribution", "tr": "Guven Dagilimi"},
+    "high": {"en": "High (8-10)", "tr": "Yuksek (8-10)"},
+    "med": {"en": "Medium (5-7)", "tr": "Orta (5-7)"},
+    "low": {"en": "Low (1-4)", "tr": "Dusuk (1-4)"},
+    "page": {"en": "Page", "tr": "Sayfa"},
+    "gen_by": {"en": "Report generated by SimuTarget.ai - AI-Powered Market Simulation Platform",
+               "tr": "Bu rapor SimuTarget.ai tarafindan olusturulmustur - AI Destekli Pazar Simulasyon Platformu"},
+    "conf_note": {"en": "Confidential - AI-Powered Market Simulation",
+                  "tr": "Gizli - AI Destekli Pazar Simulasyonu"},
+    "pro": {"en": "Pro Report", "tr": "Pro Rapor"},
+    "biz": {"en": "Business Report", "tr": "Business Rapor"},
+    "nodata": {"en": "No data", "tr": "Veri yok"},
+}
 
 
-def _header_footer(canvas_obj, doc, report_data, lang="en"):
-    """Draw header and footer on each page."""
-    canvas_obj.saveState()
-    width, height = A4
-    
-    # Header line
-    canvas_obj.setStrokeColor(BRAND_CYAN)
-    canvas_obj.setLineWidth(2)
-    canvas_obj.line(20*mm, height - 15*mm, width - 20*mm, height - 15*mm)
-    
-    # Brand name
-    canvas_obj.setFont(FONT_BOLD, 10)
-    canvas_obj.setFillColor(BRAND_CYAN)
-    canvas_obj.drawString(20*mm, height - 12*mm, "SimuTarget.ai")
-    
-    # Report type
-    canvas_obj.setFont(FONT, 8)
-    canvas_obj.setFillColor(TEXT_LIGHT)
-    report_type_text = "Campaign Analysis Report" if lang == "en" else "Kampanya Analiz Raporu"
-    canvas_obj.drawRightString(width - 20*mm, height - 12*mm, report_type_text)
-    
-    # Footer
-    canvas_obj.setStrokeColor(BG_BORDER)
-    canvas_obj.setLineWidth(0.5)
-    canvas_obj.line(20*mm, 15*mm, width - 20*mm, 15*mm)
-    
-    canvas_obj.setFont(FONT, 7)
-    canvas_obj.setFillColor(TEXT_LIGHT)
-    
-    generated = "Generated" if lang == "en" else "Oluşturulma"
-    date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-    canvas_obj.drawString(20*mm, 10*mm, f"{generated}: {date_str}")
-    
-    confidential = "Confidential — AI-Powered Market Simulation" if lang == "en" else "Gizli — AI Destekli Pazar Simülasyonu"
-    canvas_obj.drawCentredString(width / 2, 10*mm, confidential)
-    
-    page_num = f"{canvas_obj.getPageNumber()}"
-    canvas_obj.drawRightString(width - 20*mm, 10*mm, page_num)
-    
-    canvas_obj.restoreState()
+def L(k, l="en"):
+    return _T.get(k, {}).get(l, k)
 
 
-def _build_metric_card(value, label, color=BRAND_CYAN):
-    """Create a metric display as a table cell."""
-    return Table(
-        [[Paragraph(f'<font color="#{color.hexval()[2:]}">{value}</font>', 
-                    ParagraphStyle('mv', fontName=FONT_BOLD, fontSize=22, alignment=TA_CENTER, textColor=color, leading=26))],
-         [Paragraph(label, ParagraphStyle('ml', fontName=FONT, fontSize=9, alignment=TA_CENTER, textColor=TEXT_LIGHT, leading=12))]],
-        colWidths=[None],
-        style=TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), BG_LIGHT),
-            ('BOX', (0, 0), (-1, -1), 0.5, BG_BORDER),
-            ('ROUNDEDCORNERS', [6, 6, 6, 6]),
-            ('TOPPADDING', (0, 0), (-1, 0), 14),
-            ('BOTTOMPADDING', (0, -1), (-1, -1), 14),
-            ('LEFTPADDING', (0, 0), (-1, -1), 10),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-        ])
-    )
+def _ss(v, m=200):
+    s = str(v) if v else ""
+    return s[:m] + ("..." if len(s) > m else "")
 
 
-def _create_pie_drawing(data_dict, width=200, height=160, colors=None):
-    """Create a pie chart drawing."""
-    d = Drawing(width, height)
-    
-    labels = list(data_dict.keys())
-    values = list(data_dict.values())
-    
-    if not any(v > 0 for v in values):
-        return d
-    
-    pie = Pie()
-    pie.x = width // 2 - 55
-    pie.y = 15
-    pie.width = 110
-    pie.height = 110
-    pie.data = values
-    pie.labels = [f"{l}\n{v}%" if v > 0 else "" for l, v in zip(labels, values)]
-    pie.sideLabels = True
-    pie.slices.strokeWidth = 1
-    pie.slices.strokeColor = WHITE
-    
-    if colors is None:
-        colors = CHART_COLORS
-    for i in range(len(values)):
-        pie.slices[i].fillColor = colors[i % len(colors)]
-        pie.slices[i].fontName = FONT
-        pie.slices[i].fontSize = 8
-    
-    d.add(pie)
-    return d
-
-
-def _create_bar_drawing(data_dict, width=260, height=160, color=BRAND_CYAN):
-    """Create a horizontal bar chart as a table (more reliable than ReportLab charts)."""
-    d = Drawing(width, height)
-    
-    labels = list(data_dict.keys())
-    values = list(data_dict.values())
-    max_val = max(values) if values and max(values) > 0 else 1
-    
-    bar_height = 14
-    gap = 6
-    start_y = height - 20
-    label_width = 80
-    bar_area_width = width - label_width - 30
-    
-    for i, (label, val) in enumerate(zip(labels, values)):
-        y = start_y - i * (bar_height + gap)
-        
-        # Label
-        d.add(String(0, y + 2, label, fontName=FONT, fontSize=8, fillColor=TEXT_BODY))
-        
-        # Background bar
-        d.add(Rect(label_width, y - 2, bar_area_width, bar_height,
-                    fillColor=BG_GRAY, strokeColor=None))
-        
-        # Value bar
-        bar_width = (val / max_val) * bar_area_width if max_val > 0 else 0
-        if bar_width > 0:
-            d.add(Rect(label_width, y - 2, bar_width, bar_height,
-                        fillColor=color, strokeColor=None))
-        
-        # Value text
-        d.add(String(label_width + bar_area_width + 4, y + 2, str(val),
-                      fontName=FONT_BOLD, fontSize=8, fillColor=TEXT_BODY))
-    
-    return d
-
-
-def _localized(key, lang="en"):
-    """Simple localization helper."""
-    translations = {
-        "campaign_report": {"en": "Campaign Analysis Report", "tr": "Kampanya Analiz Raporu"},
-        "executive_summary": {"en": "Executive Summary", "tr": "Yönetici Özeti"},
-        "campaign_details": {"en": "Campaign Details", "tr": "Kampanya Detayları"},
-        "campaign_name": {"en": "Campaign Name", "tr": "Kampanya Adı"},
-        "campaign_content": {"en": "Campaign Content", "tr": "Kampanya İçeriği"},
-        "test_type": {"en": "Test Type", "tr": "Test Türü"},
-        "region": {"en": "Region", "tr": "Bölge"},
-        "test_date": {"en": "Test Date", "tr": "Test Tarihi"},
-        "key_metrics": {"en": "Key Metrics", "tr": "Temel Metrikler"},
-        "approval_rate": {"en": "Approval Rate", "tr": "Onay Oranı"},
-        "avg_confidence": {"en": "Avg. Confidence", "tr": "Ort. Güven"},
-        "total_personas": {"en": "Total Personas", "tr": "Toplam Persona"},
-        "yes_votes": {"en": "Yes Votes", "tr": "Evet Oyları"},
-        "no_votes": {"en": "No Votes", "tr": "Hayır Oyları"},
-        "results_overview": {"en": "Results Overview", "tr": "Sonuçlara Genel Bakış"},
-        "demographic_analysis": {"en": "Demographic Analysis", "tr": "Demografik Analiz"},
-        "by_gender": {"en": "By Gender", "tr": "Cinsiyete Göre"},
-        "by_age_group": {"en": "By Age Group", "tr": "Yaş Grubuna Göre"},
-        "by_income_level": {"en": "By Income Level", "tr": "Gelir Düzeyine Göre"},
-        "detailed_responses": {"en": "Detailed Persona Responses", "tr": "Detaylı Persona Yanıtları"},
-        "persona": {"en": "Persona", "tr": "Persona"},
-        "age": {"en": "Age", "tr": "Yaş"},
-        "gender": {"en": "Gender", "tr": "Cinsiyet"},
-        "city": {"en": "City", "tr": "Şehir"},
-        "occupation": {"en": "Occupation", "tr": "Meslek"},
-        "decision": {"en": "Decision", "tr": "Karar"},
-        "confidence": {"en": "Confidence", "tr": "Güven"},
-        "reasoning": {"en": "Reasoning", "tr": "Gerekçe"},
-        "yes": {"en": "Yes", "tr": "Evet"},
-        "no": {"en": "No", "tr": "Hayır"},
-        "single_test": {"en": "Single Campaign Test", "tr": "Tekli Kampanya Testi"},
-        "ab_compare": {"en": "A/B Comparison", "tr": "A/B Karşılaştırma"},
-        "multi_compare": {"en": "Multi Comparison", "tr": "Çoklu Karşılaştırma"},
-        "option_a": {"en": "Option A", "tr": "Seçenek A"},
-        "option_b": {"en": "Option B", "tr": "Seçenek B"},
-        "neither": {"en": "Neither", "tr": "Hiçbiri"},
-        "vote_distribution": {"en": "Vote Distribution", "tr": "Oy Dağılımı"},
-        "choice": {"en": "Choice", "tr": "Tercih"},
-        "insights": {"en": "Key Insights", "tr": "Önemli Bulgular"},
-        "recommendation": {"en": "Recommendation", "tr": "Öneri"},
-        "confidence_distribution": {"en": "Confidence Distribution", "tr": "Güven Dağılımı"},
-        "high_confidence": {"en": "High (8-10)", "tr": "Yüksek (8-10)"},
-        "medium_confidence": {"en": "Medium (5-7)", "tr": "Orta (5-7)"},
-        "low_confidence": {"en": "Low (1-4)", "tr": "Düşük (1-4)"},
-        "generated_by": {"en": "Report generated by SimuTarget.ai — AI-Powered Market Simulation Platform", 
-                         "tr": "Bu rapor SimuTarget.ai tarafından oluşturulmuştur — AI Destekli Pazar Simülasyon Platformu"},
-    }
-    return translations.get(key, {}).get(lang, key)
-
-
-def _get_reasoning_text(reasoning, lang="en"):
-    """Extract localized reasoning from JSON or plain string."""
-    if not reasoning:
+def _rsn(r, l="en"):
+    if not r:
         return ""
     try:
-        data = json.loads(reasoning) if isinstance(reasoning, str) else reasoning
-        if isinstance(data, dict):
-            return data.get(lang, data.get("tr", data.get("en", str(reasoning))))
-    except (json.JSONDecodeError, TypeError):
+        d = json.loads(r) if isinstance(r, str) else r
+        if isinstance(d, dict):
+            return d.get(l, d.get("tr", d.get("en", str(r))))
+    except Exception:
         pass
-    return str(reasoning)[:200]
+    return str(r)[:200]
 
 
-def _compute_demographics(responses, lang="en"):
-    """Compute demographic breakdowns from persona responses."""
-    gender_stats = {}
-    age_stats = {}
-    income_stats = {}
-    
-    for r in responses:
-        persona = r.get("persona_data", {}) if isinstance(r.get("persona_data"), dict) else {}
-        decision = r.get("decision", "")
-        is_yes = decision.upper() in ["EVET", "YES", "A", "B"]
-        
-        # Gender
-        gender = persona.get("gender", "Unknown")
-        if gender not in gender_stats:
-            gender_stats[gender] = {"total": 0, "yes": 0}
-        gender_stats[gender]["total"] += 1
-        if is_yes:
-            gender_stats[gender]["yes"] += 1
-        
-        # Age group
-        age = persona.get("age", 0)
-        if age < 25:
-            age_group = "18-24"
-        elif age < 35:
-            age_group = "25-34"
-        elif age < 45:
-            age_group = "35-44"
-        elif age < 55:
-            age_group = "45-54"
-        else:
-            age_group = "55+"
-        if age_group not in age_stats:
-            age_stats[age_group] = {"total": 0, "yes": 0}
-        age_stats[age_group]["total"] += 1
-        if is_yes:
-            age_stats[age_group]["yes"] += 1
-        
-        # Income
-        income = persona.get("income_level", "Unknown")
-        if income not in income_stats:
-            income_stats[income] = {"total": 0, "yes": 0}
-        income_stats[income]["total"] += 1
-        if is_yes:
-            income_stats[income]["yes"] += 1
-    
-    return gender_stats, age_stats, income_stats
-
-
-# ═══════════════════════════════════════════════════════════
-#  PRO REPORT — Clean, Professional
-# ═══════════════════════════════════════════════════════════
-
-def generate_pro_report(report_data: dict, output_path: str, lang: str = "en") -> str:
-    """
-    Generate a clean Pro-tier PDF report.
-    
-    report_data: {
-        "campaign_name": str,
-        "campaign_content": str,
-        "test_type": "single" | "ab_compare" | "multi_compare",
-        "region": str,
-        "created_at": str (ISO),
-        "total_personas": int,
-        "approval_rate": float,
-        "avg_confidence": float,
-        "yes_count": int,
-        "no_count": int,
-        "results": list[dict],  # per-persona responses
-        # For A/B:
-        "content_a": str, "content_b": str,
-        "a_votes": int, "b_votes": int, "neither_votes": int,
-        # For Multi:
-        "options": dict, "vote_distribution": dict,
-    }
-    """
-    styles = _get_styles()
-    width, height = A4
-    
-    doc = SimpleDocTemplate(
-        output_path, pagesize=A4,
-        leftMargin=20*mm, rightMargin=20*mm,
-        topMargin=22*mm, bottomMargin=22*mm,
-    )
-    
-    story = []
-    usable_width = width - 40*mm
-    
-    # ── TITLE ──
-    story.append(Spacer(1, 8*mm))
-    
-    # Cyan accent line
-    accent_line = Table(
-        [[""]],
-        colWidths=[40],
-        rowHeights=[3],
-        style=TableStyle([('BACKGROUND', (0,0), (-1,-1), BRAND_CYAN), ('LEFTPADDING', (0,0), (-1,-1), 0), ('RIGHTPADDING', (0,0), (-1,-1), 0)])
-    )
-    story.append(accent_line)
-    story.append(Spacer(1, 3*mm))
-    
-    story.append(Paragraph(_localized("campaign_report", lang), styles['ReportTitle']))
-    story.append(Paragraph(
-        report_data.get("campaign_name", "Untitled Campaign"),
-        styles['ReportSubtitle']
-    ))
-    
-    # ── CAMPAIGN INFO TABLE ──
-    story.append(Paragraph(_localized("campaign_details", lang), styles['SectionTitle']))
-    
-    test_type_map = {
-        "single": _localized("single_test", lang),
-        "ab_compare": _localized("ab_compare", lang),
-        "multi_compare": _localized("multi_compare", lang),
-    }
-    
-    date_str = report_data.get("created_at", datetime.now().isoformat())
+def _fd(ds):
     try:
-        date_str = datetime.fromisoformat(date_str.replace("Z", "+00:00")).strftime("%d %b %Y, %H:%M")
-    except:
-        pass
-    
-    info_data = [
-        [_localized("test_type", lang), test_type_map.get(report_data.get("test_type", "single"), "Single")],
-        [_localized("region", lang), report_data.get("region", "TR")],
-        [_localized("test_date", lang), date_str],
-        [_localized("total_personas", lang), str(report_data.get("total_personas", 0))],
-    ]
-    
-    info_table = Table(info_data, colWidths=[usable_width * 0.35, usable_width * 0.65])
-    info_table.setStyle(TableStyle([
-        ('FONT', (0, 0), (0, -1), FONT_BOLD, 9),
-        ('FONT', (1, 0), (1, -1), FONT, 9),
-        ('TEXTCOLOR', (0, 0), (0, -1), TEXT_LIGHT),
-        ('TEXTCOLOR', (1, 0), (1, -1), TEXT_BODY),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('LINEBELOW', (0, 0), (-1, -2), 0.5, BG_BORDER),
-    ]))
-    story.append(info_table)
-    story.append(Spacer(1, 4*mm))
-    
-    # Campaign content (truncated)
-    content_text = report_data.get("campaign_content", "")
-    if content_text and len(content_text) > 300:
-        content_text = content_text[:300] + "..."
-    if content_text:
-        story.append(Paragraph(_localized("campaign_content", lang), styles['SubSection']))
-        story.append(Paragraph(content_text, styles['BodyText2']))
-        story.append(Spacer(1, 4*mm))
-    
-    # ── KEY METRICS ──
-    story.append(Paragraph(_localized("key_metrics", lang), styles['SectionTitle']))
-    
-    test_type = report_data.get("test_type", "single")
-    
-    if test_type == "single":
-        approval = report_data.get("approval_rate", 0)
-        metrics = [
-            _build_metric_card(f"{approval}%", _localized("approval_rate", lang), 
-                             SUCCESS_GREEN if approval >= 50 else DANGER_RED),
-            _build_metric_card(f"{report_data.get('avg_confidence', 0):.1f}/10", 
-                             _localized("avg_confidence", lang), BRAND_PURPLE),
-            _build_metric_card(str(report_data.get("yes_count", 0)), 
-                             _localized("yes_votes", lang), SUCCESS_GREEN),
-            _build_metric_card(str(report_data.get("no_count", 0)), 
-                             _localized("no_votes", lang), DANGER_RED),
-        ]
-    elif test_type == "ab_compare":
-        a_votes = report_data.get("a_votes", 0)
-        b_votes = report_data.get("b_votes", 0)
-        neither = report_data.get("neither_votes", 0)
-        total = a_votes + b_votes + neither
-        metrics = [
-            _build_metric_card(str(a_votes), f"{_localized('option_a', lang)} ({round(a_votes/total*100) if total else 0}%)", BRAND_CYAN),
-            _build_metric_card(str(b_votes), f"{_localized('option_b', lang)} ({round(b_votes/total*100) if total else 0}%)", BRAND_PURPLE),
-            _build_metric_card(str(neither), _localized("neither", lang), TEXT_LIGHT),
-            _build_metric_card(f"{report_data.get('avg_confidence', 0):.1f}/10", _localized("avg_confidence", lang), WARNING_AMBER),
-        ]
-    else:
-        # Multi compare
-        vote_dist = report_data.get("vote_distribution", {})
-        metrics = []
-        for label, count in list(vote_dist.items())[:4]:
-            total = sum(vote_dist.values())
-            pct = round(count / total * 100) if total else 0
-            metrics.append(_build_metric_card(str(count), f"{label} ({pct}%)", CHART_COLORS[len(metrics) % len(CHART_COLORS)]))
-    
-    col_w = usable_width / len(metrics) if metrics else usable_width / 4
-    metrics_table = Table([metrics], colWidths=[col_w] * len(metrics))
-    metrics_table.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('LEFTPADDING', (0, 0), (-1, -1), 3),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-    ]))
-    story.append(metrics_table)
-    story.append(Spacer(1, 6*mm))
-    
-    # ── RESULTS TABLE ──
-    story.append(Paragraph(_localized("detailed_responses", lang), styles['SectionTitle']))
-    
-    results = report_data.get("results", [])
-    
-    if test_type == "single":
-        header = [
-            _localized("persona", lang), _localized("age", lang), _localized("gender", lang),
-            _localized("city", lang), _localized("decision", lang), _localized("confidence", lang),
-        ]
-        table_data = [header]
-        for r in results[:50]:  # Max 50 rows for Pro
-            decision = r.get("decision", "")
-            table_data.append([
-                r.get("persona_name", ""),
-                str(r.get("persona_age", "")),
-                r.get("persona_gender", ""),
-                r.get("persona_city", ""),
-                decision,
-                str(r.get("confidence", "")),
-            ])
-    elif test_type == "ab_compare":
-        header = [
-            _localized("persona", lang), _localized("age", lang), _localized("gender", lang),
-            _localized("choice", lang), _localized("confidence", lang),
-        ]
-        table_data = [header]
-        for r in results[:50]:
-            table_data.append([
-                r.get("persona_name", ""),
-                str(r.get("persona_age", "")),
-                r.get("persona_gender", ""),
-                r.get("choice", ""),
-                str(r.get("confidence", "")),
-            ])
-    else:
-        header = [
-            _localized("persona", lang), _localized("age", lang),
-            _localized("choice", lang), _localized("confidence", lang),
-        ]
-        table_data = [header]
-        for r in results[:50]:
-            table_data.append([
-                r.get("persona_name", ""),
-                str(r.get("persona_age", "")),
-                r.get("choice", ""),
-                str(r.get("confidence", "")),
-            ])
-    
-    n_cols = len(header)
-    col_widths = [usable_width / n_cols] * n_cols
-    
-    results_table = Table(table_data, colWidths=col_widths, repeatRows=1)
-    
-    table_style_cmds = [
-        ('FONT', (0, 0), (-1, 0), FONT_BOLD, 8),
-        ('FONT', (0, 1), (-1, -1), FONT, 8),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-        ('BACKGROUND', (0, 0), (-1, 0), BRAND_DARK),
-        ('TEXTCOLOR', (0, 1), (-1, -1), TEXT_BODY),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [BG_WHITE, BG_LIGHT]),
-        ('GRID', (0, 0), (-1, -1), 0.5, BG_BORDER),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ]
-    
-    # Color-code decisions
-    for row_idx in range(1, len(table_data)):
-        if test_type == "single":
-            decision_col = 4
-        elif test_type == "ab_compare":
-            decision_col = 3
+        return datetime.fromisoformat(str(ds).replace("Z", "+00:00")).strftime("%d %b %Y, %H:%M")
+    except Exception:
+        return str(ds)[:19] if ds else "-"
+
+
+def _hx(c):
+    return "#%02x%02x%02x" % (int(c.red * 255), int(c.green * 255), int(c.blue * 255))
+
+
+# --- STYLES ---
+def _st():
+    return {
+        "title": ParagraphStyle("t", fontName=FB, fontSize=26, leading=32, textColor=TD, spaceAfter=4),
+        "sub": ParagraphStyle("su", fontName=F, fontSize=12, leading=16, textColor=TL, spaceAfter=20),
+        "sec": ParagraphStyle("se", fontName=FB, fontSize=15, leading=20, textColor=TD, spaceBefore=16, spaceAfter=8),
+        "ssec": ParagraphStyle("ss", fontName=FB, fontSize=11, leading=15, textColor=TB, spaceBefore=10, spaceAfter=5),
+        "body": ParagraphStyle("bo", fontName=F, fontSize=10, leading=14, textColor=TB, spaceAfter=6),
+        "sm": ParagraphStyle("sm", fontName=F, fontSize=8, leading=11, textColor=TB),
+        "smb": ParagraphStyle("smb", fontName=FB, fontSize=8, leading=11, textColor=TB),
+        "hdr": ParagraphStyle("hdr", fontName=FB, fontSize=8, leading=10, textColor=W),
+        "ftr": ParagraphStyle("ftr", fontName=F, fontSize=7, leading=10, textColor=TL, alignment=TA_CENTER),
+    }
+
+
+# --- HEADER / FOOTER ---
+def _hf(c, doc, data, lang, tier):
+    c.saveState()
+    w, h = A4
+    c.setFillColor(DARK)
+    c.rect(0, h - 14 * mm, w, 14 * mm, fill=True, stroke=False)
+    c.setFont(FB, 10)
+    c.setFillColor(CYAN)
+    c.drawString(20 * mm, h - 10 * mm, "SimuTarget.ai")
+    c.setFont(F, 8)
+    c.setFillColor(HexColor("#94A3B8"))
+    c.drawRightString(w - 20 * mm, h - 10 * mm, tier + " | " + L("report", lang))
+    c.setStrokeColor(BGB)
+    c.setLineWidth(0.5)
+    c.line(20 * mm, 14 * mm, w - 20 * mm, 14 * mm)
+    c.setFont(F, 7)
+    c.setFillColor(TL)
+    c.drawString(20 * mm, 9 * mm, _fd(datetime.now().isoformat()))
+    c.drawCentredString(w / 2, 9 * mm, L("conf_note", lang))
+    c.drawRightString(w - 20 * mm, 9 * mm, L("page", lang) + " " + str(c.getPageNumber()))
+    c.restoreState()
+
+
+# --- METRIC CARD ---
+def _mc(val, label, color=None):
+    if color is None:
+        color = CYAN
+    hx = _hx(color)
+    val_p = Paragraph(
+        '<font color="' + hx + '"><b>' + str(val) + '</b></font>',
+        ParagraphStyle("mv", fontName=FB, fontSize=22, alignment=TA_CENTER, leading=26),
+    )
+    lbl_p = Paragraph(
+        label,
+        ParagraphStyle("ml", fontName=F, fontSize=8, alignment=TA_CENTER, textColor=TL, leading=11),
+    )
+    return Table(
+        [[val_p], [lbl_p]],
+        colWidths=[None],
+        rowHeights=[32, 18],
+        style=TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), BGL),
+            ("BOX", (0, 0), (-1, -1), 0.5, BGB),
+            ("ROUNDEDCORNERS", [6, 6, 6, 6]),
+            ("TOPPADDING", (0, 0), (-1, 0), 10),
+            ("BOTTOMPADDING", (0, -1), (-1, -1), 10),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ]),
+    )
+
+
+# --- PIE CHART (FIXED) ---
+def _pie(dd, wd=200, ht=150, colors=None):
+    d = Drawing(wd, ht)
+    ls = list(dd.keys())
+    vs = list(dd.values())
+    total = sum(vs)
+    if total <= 0:
+        d.add(String(wd // 2, ht // 2, "No data", fontName=F, fontSize=10, fillColor=TL, textAnchor="middle"))
+        return d
+    p = Pie()
+    p.x = wd // 2 - 50
+    p.y = 10
+    p.width = 100
+    p.height = 100
+    p.data = vs
+    p.labels = [lb + " (" + str(round(v / total * 100)) + "%)" if v > 0 else "" for lb, v in zip(ls, vs)]
+    p.sideLabels = True
+    p.slices.strokeWidth = 1.5
+    p.slices.strokeColor = W
+    cs = colors or CC
+    for i in range(len(vs)):
+        p.slices[i].fillColor = cs[i % len(cs)]
+        p.slices[i].fontName = F
+        p.slices[i].fontSize = 8
+    d.add(p)
+    return d
+
+
+# --- BAR CHART ---
+def _bar(dd, wd=250, ht=None, color=None, show_pct=False):
+    if color is None:
+        color = CYAN
+    items = list(dd.items())
+    if not items:
+        return Drawing(wd, 30)
+    bh = 16
+    gap = 5
+    n = len(items)
+    if ht is None:
+        ht = max(60, n * (bh + gap) + 20)
+    d = Drawing(wd, ht)
+    mx = max((v for _, v in items), default=1) or 1
+    lw = 100
+    ba = wd - lw - 45
+    sy = ht - 15
+    for i, (lb, vl) in enumerate(items):
+        y = sy - i * (bh + gap)
+        d.add(String(0, y + 3, _ss(lb, 18), fontName=F, fontSize=8, fillColor=TB))
+        d.add(Rect(lw, y, ba, bh, fillColor=BGG, strokeColor=None))
+        bw = (vl / mx) * ba if mx > 0 else 0
+        if bw > 0:
+            d.add(Rect(lw, y, max(bw, 2), bh, fillColor=color, strokeColor=None))
+        suffix = "%" if show_pct else ""
+        d.add(String(lw + ba + 4, y + 3, str(vl) + suffix, fontName=FB, fontSize=8, fillColor=TB))
+    return d
+
+
+# --- DEMOGRAPHICS ---
+def _demographics(results):
+    gn = {}
+    ag = {}
+    ic = {}
+    for r in results:
+        pd = r.get("persona_data", {}) if isinstance(r.get("persona_data"), dict) else {}
+        dec = str(r.get("decision", "")).upper()
+        isy = dec in ("EVET", "YES", "A")
+        g = pd.get("gender", r.get("persona_gender", "?"))
+        gn.setdefault(g, {"t": 0, "y": 0})
+        gn[g]["t"] += 1
+        if isy:
+            gn[g]["y"] += 1
+        try:
+            a = int(pd.get("age", r.get("persona_age", 0)))
+        except (ValueError, TypeError):
+            a = 0
+        if a < 25:
+            grp = "18-24"
+        elif a < 35:
+            grp = "25-34"
+        elif a < 45:
+            grp = "35-44"
+        elif a < 55:
+            grp = "45-54"
         else:
-            decision_col = 2
-        
-        val = table_data[row_idx][decision_col].upper()
-        if val in ["EVET", "YES", "A"]:
-            table_style_cmds.append(('TEXTCOLOR', (decision_col, row_idx), (decision_col, row_idx), SUCCESS_GREEN))
-            table_style_cmds.append(('FONT', (decision_col, row_idx), (decision_col, row_idx), FONT_BOLD, 8))
-        elif val in ["HAYIR", "NO", "B"]:
-            table_style_cmds.append(('TEXTCOLOR', (decision_col, row_idx), (decision_col, row_idx), DANGER_RED))
-            table_style_cmds.append(('FONT', (decision_col, row_idx), (decision_col, row_idx), FONT_BOLD, 8))
-    
-    results_table.setStyle(TableStyle(table_style_cmds))
-    story.append(results_table)
-    
-    # ── FOOTER NOTE ──
-    story.append(Spacer(1, 10*mm))
-    story.append(Paragraph(
-        _localized("generated_by", lang),
-        styles['FooterText']
-    ))
-    
-    # Build
-    doc.build(story, onFirstPage=lambda c, d: _header_footer(c, d, report_data, lang),
-              onLaterPages=lambda c, d: _header_footer(c, d, report_data, lang))
-    
-    return output_path
+            grp = "55+"
+        ag.setdefault(grp, {"t": 0, "y": 0})
+        ag[grp]["t"] += 1
+        if isy:
+            ag[grp]["y"] += 1
+        inc = pd.get("income_level", r.get("persona_income", "?"))
+        ic.setdefault(inc, {"t": 0, "y": 0})
+        ic[inc]["t"] += 1
+        if isy:
+            ic[inc]["y"] += 1
+    return gn, ag, ic
 
 
-# ═══════════════════════════════════════════════════════════
-#  BUSINESS REPORT — Infographic, Detailed
-# ═══════════════════════════════════════════════════════════
-
-def generate_business_report(report_data: dict, output_path: str, lang: str = "en") -> str:
-    """
-    Generate a detailed Business-tier PDF report with charts and demographics.
-    Same data structure as Pro but with additional visualizations.
-    """
-    styles = _get_styles()
-    width, height = A4
-    
-    doc = SimpleDocTemplate(
-        output_path, pagesize=A4,
-        leftMargin=20*mm, rightMargin=20*mm,
-        topMargin=22*mm, bottomMargin=22*mm,
-    )
-    
-    story = []
-    usable_width = width - 40*mm
-    
-    # ── COVER SECTION ──
-    story.append(Spacer(1, 10*mm))
-    
-    # Gradient-style accent block
-    accent_block = Table(
-        [[Paragraph(f'<font color="#FFFFFF"><b>SimuTarget.ai</b></font>',
-                    ParagraphStyle('ab', fontSize=11, textColor=WHITE, alignment=TA_LEFT, leading=14))]],
-        colWidths=[usable_width],
-        rowHeights=[30],
-        style=TableStyle([
-            ('BACKGROUND', (0,0), (-1,-1), BRAND_CYAN),
-            ('LEFTPADDING', (0,0), (-1,-1), 12),
-            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-            ('ROUNDEDCORNERS', [6, 6, 0, 0]),
-        ])
-    )
-    story.append(accent_block)
-    
-    title_block = Table(
-        [[Paragraph(f'<b>{_localized("campaign_report", lang)}</b>',
-                    ParagraphStyle('tb', fontSize=24, textColor=TEXT_DARK, leading=30)),
-          Paragraph(report_data.get("campaign_name", ""),
-                    ParagraphStyle('cn', fontSize=12, textColor=TEXT_LIGHT, leading=16, alignment=TA_RIGHT))]],
-        colWidths=[usable_width * 0.65, usable_width * 0.35],
-        style=TableStyle([
-            ('BACKGROUND', (0,0), (-1,-1), BG_LIGHT),
-            ('LEFTPADDING', (0,0), (-1,-1), 12),
-            ('RIGHTPADDING', (0,0), (-1,-1), 12),
-            ('TOPPADDING', (0,0), (-1,-1), 14),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 14),
-            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-            ('ROUNDEDCORNERS', [0, 0, 6, 6]),
-            ('BOX', (0,0), (-1,-1), 0.5, BG_BORDER),
-        ])
-    )
-    story.append(title_block)
-    story.append(Spacer(1, 6*mm))
-    
-    # ── CAMPAIGN INFO ──
-    test_type = report_data.get("test_type", "single")
-    test_type_map = {
-        "single": _localized("single_test", lang),
-        "ab_compare": _localized("ab_compare", lang),
-        "multi_compare": _localized("multi_compare", lang),
-    }
-    
-    date_str = report_data.get("created_at", datetime.now().isoformat())
-    try:
-        date_str = datetime.fromisoformat(date_str.replace("Z", "+00:00")).strftime("%d %b %Y, %H:%M")
-    except:
-        pass
-    
-    info_items = [
-        [_localized("test_type", lang), test_type_map.get(test_type, "Single"),
-         _localized("region", lang), report_data.get("region", "TR")],
-        [_localized("test_date", lang), date_str,
-         _localized("total_personas", lang), str(report_data.get("total_personas", 0))],
+# --- INFO TABLE ---
+def _info_tbl(rd, tt, lang, uw):
+    tm = {"single": L("single", lang), "ab_compare": L("ab", lang), "multi_compare": L("multi", lang)}
+    data = [
+        [L("name", lang), _ss(rd.get("campaign_name", "-"), 60)],
+        [L("type", lang), tm.get(tt, tt)],
+        [L("region", lang), rd.get("region", "TR")],
+        [L("date", lang), _fd(rd.get("created_at", ""))],
+        [L("total", lang), str(rd.get("total_personas", 0))],
     ]
-    
-    info_table = Table(info_items, colWidths=[usable_width*0.18, usable_width*0.32, usable_width*0.18, usable_width*0.32])
-    info_table.setStyle(TableStyle([
-        ('FONT', (0, 0), (0, -1), FONT_BOLD, 9),
-        ('FONT', (2, 0), (2, -1), FONT_BOLD, 9),
-        ('FONT', (1, 0), (1, -1), FONT, 9),
-        ('FONT', (3, 0), (3, -1), FONT, 9),
-        ('TEXTCOLOR', (0, 0), (0, -1), TEXT_LIGHT),
-        ('TEXTCOLOR', (2, 0), (2, -1), TEXT_LIGHT),
-        ('TEXTCOLOR', (1, 0), (1, -1), TEXT_BODY),
-        ('TEXTCOLOR', (3, 0), (3, -1), TEXT_BODY),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('LINEBELOW', (0, 0), (-1, -1), 0.5, BG_BORDER),
+    t = Table(data, colWidths=[uw * 0.3, uw * 0.7])
+    t.setStyle(TableStyle([
+        ("FONT", (0, 0), (0, -1), FB, 9),
+        ("FONT", (1, 0), (1, -1), F, 9),
+        ("TEXTCOLOR", (0, 0), (0, -1), TL),
+        ("TEXTCOLOR", (1, 0), (1, -1), TB),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("LINEBELOW", (0, 0), (-1, -1), 0.5, BGB),
     ]))
-    story.append(info_table)
-    story.append(Spacer(1, 4*mm))
-    
-    # Campaign content
-    content_text = report_data.get("campaign_content", "")
-    if content_text:
-        story.append(Paragraph(_localized("campaign_content", lang), styles['SubSection']))
-        story.append(Paragraph(content_text[:500] + ("..." if len(content_text) > 500 else ""), styles['BodyText2']))
-        story.append(Spacer(1, 4*mm))
-    
-    # ── KEY METRICS (same as Pro) ──
-    story.append(Paragraph(_localized("key_metrics", lang), styles['SectionTitle']))
-    
-    if test_type == "single":
-        approval = report_data.get("approval_rate", 0)
-        metrics = [
-            _build_metric_card(f"{approval}%", _localized("approval_rate", lang),
-                             SUCCESS_GREEN if approval >= 50 else DANGER_RED),
-            _build_metric_card(f"{report_data.get('avg_confidence', 0):.1f}/10",
-                             _localized("avg_confidence", lang), BRAND_PURPLE),
-            _build_metric_card(str(report_data.get("yes_count", 0)),
-                             _localized("yes_votes", lang), SUCCESS_GREEN),
-            _build_metric_card(str(report_data.get("no_count", 0)),
-                             _localized("no_votes", lang), DANGER_RED),
+    return t
+
+
+# --- METRICS ROW ---
+def _metrics_row(rd, tt, lang, uw):
+    ms = []
+    if tt == "single":
+        try:
+            apr = float(rd.get("approval_rate", 0))
+        except (ValueError, TypeError):
+            apr = 0
+        try:
+            ac = float(rd.get("avg_confidence", 0))
+        except (ValueError, TypeError):
+            ac = 0
+        ms = [
+            _mc(str(round(apr, 1)) + "%", L("approval", lang), GREEN if apr >= 50 else RED),
+            _mc(str(round(ac, 1)) + "/10", L("avgconf", lang), PURPLE),
+            _mc(str(rd.get("yes_count", 0)), L("yes_v", lang), GREEN),
+            _mc(str(rd.get("no_count", 0)), L("no_v", lang), RED),
         ]
-    elif test_type == "ab_compare":
-        a_votes = report_data.get("a_votes", 0)
-        b_votes = report_data.get("b_votes", 0)
-        neither = report_data.get("neither_votes", 0)
-        total = a_votes + b_votes + neither
-        metrics = [
-            _build_metric_card(str(a_votes), f"{_localized('option_a', lang)} ({round(a_votes/total*100) if total else 0}%)", BRAND_CYAN),
-            _build_metric_card(str(b_votes), f"{_localized('option_b', lang)} ({round(b_votes/total*100) if total else 0}%)", BRAND_PURPLE),
-            _build_metric_card(str(neither), _localized("neither", lang), TEXT_LIGHT),
-            _build_metric_card(f"{report_data.get('avg_confidence', 0):.1f}/10", _localized("avg_confidence", lang), WARNING_AMBER),
+    elif tt == "ab_compare":
+        av = rd.get("a_votes", 0)
+        bv = rd.get("b_votes", 0)
+        nv = rd.get("neither_votes", 0)
+        tot = av + bv + nv or 1
+        try:
+            ac = float(rd.get("avg_confidence", 0))
+        except (ValueError, TypeError):
+            ac = 0
+        ms = [
+            _mc(str(av), L("optA", lang) + " (" + str(round(av / tot * 100)) + "%)", CYAN),
+            _mc(str(bv), L("optB", lang) + " (" + str(round(bv / tot * 100)) + "%)", PURPLE),
+            _mc(str(nv), L("neither", lang), TL),
+            _mc(str(round(ac, 1)) + "/10", L("avgconf", lang), AMBER),
         ]
     else:
-        vote_dist = report_data.get("vote_distribution", {})
-        metrics = []
-        for label, count in list(vote_dist.items())[:4]:
-            total_v = sum(vote_dist.values())
-            pct = round(count / total_v * 100) if total_v else 0
-            metrics.append(_build_metric_card(str(count), f"{label} ({pct}%)", CHART_COLORS[len(metrics) % len(CHART_COLORS)]))
-    
-    if metrics:
-        col_w = usable_width / len(metrics)
-        metrics_table = Table([metrics], colWidths=[col_w] * len(metrics))
-        metrics_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 3),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
-        ]))
-        story.append(metrics_table)
-    story.append(Spacer(1, 6*mm))
-    
-    # ══════════════════════════════════════════════
-    # ── CHARTS SECTION (Business exclusive) ──
-    # ══════════════════════════════════════════════
-    
-    story.append(Paragraph(_localized("results_overview", lang), styles['SectionTitle']))
-    
-    # Vote distribution pie chart
-    if test_type == "single":
-        yes_c = report_data.get("yes_count", 0)
-        no_c = report_data.get("no_count", 0)
-        pie_data = {
-            _localized("yes", lang): yes_c,
-            _localized("no", lang): no_c,
-        }
-        pie_colors = [SUCCESS_GREEN, DANGER_RED]
-    elif test_type == "ab_compare":
-        pie_data = {
-            _localized("option_a", lang): report_data.get("a_votes", 0),
-            _localized("option_b", lang): report_data.get("b_votes", 0),
-            _localized("neither", lang): report_data.get("neither_votes", 0),
-        }
-        pie_colors = [BRAND_CYAN, BRAND_PURPLE, TEXT_LIGHT]
+        vd = rd.get("vote_distribution", {})
+        try:
+            ac = float(rd.get("avg_confidence", 0))
+        except (ValueError, TypeError):
+            ac = 0
+        tv = sum(vd.values()) or 1
+        for i, (lb, ct) in enumerate(list(vd.items())[:3]):
+            ms.append(_mc(str(ct), _ss(lb, 12) + " (" + str(round(ct / tv * 100)) + "%)", CC[i % len(CC)]))
+        ms.append(_mc(str(round(ac, 1)) + "/10", L("avgconf", lang), AMBER))
+    if not ms:
+        return None
+    cw = uw / len(ms)
+    t = Table([ms], colWidths=[cw] * len(ms))
+    t.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    return t
+
+
+# --- INSIGHT ---
+def _insight(rd, tt, lang):
+    if tt == "single":
+        try:
+            r = float(rd.get("approval_rate", 0))
+        except (ValueError, TypeError):
+            r = 0
+        n = rd.get("total_personas", 0)
+        if lang == "tr":
+            if r >= 70:
+                return str(n) + " persona arasinda %" + str(round(r)) + " onay orani - kampanya guclu performans gosteriyor."
+            elif r >= 40:
+                return str(n) + " persona arasinda %" + str(round(r)) + " onay orani - orta duzeyde ilgi, iyilestirme onerilir."
+            else:
+                return str(n) + " persona arasinda %" + str(round(r)) + " onay orani - kampanya yeniden degerlendirilmeli."
+        else:
+            if r >= 70:
+                return str(round(r)) + "% approval across " + str(n) + " personas - strong performance."
+            elif r >= 40:
+                return str(round(r)) + "% approval across " + str(n) + " personas - moderate interest, optimization recommended."
+            else:
+                return str(round(r)) + "% approval across " + str(n) + " personas - campaign needs significant revision."
+    elif tt == "ab_compare":
+        a = rd.get("a_votes", 0)
+        b = rd.get("b_votes", 0)
+        wn = "A" if a > b else "B" if b > a else "Tie"
+        if lang == "tr":
+            return "Secenek " + wn + " daha yuksek oy aldi (A:" + str(a) + ", B:" + str(b) + ")."
+        return "Option " + wn + " received more votes (A:" + str(a) + ", B:" + str(b) + ")."
     else:
-        pie_data = report_data.get("vote_distribution", {})
-        pie_colors = CHART_COLORS
-    
-    pie_drawing = _create_pie_drawing(pie_data, width=220, height=150, colors=pie_colors)
-    
-    # Confidence distribution
-    results = report_data.get("results", [])
-    conf_high = sum(1 for r in results if r.get("confidence", 0) >= 8)
-    conf_mid = sum(1 for r in results if 5 <= r.get("confidence", 0) < 8)
-    conf_low = sum(1 for r in results if r.get("confidence", 0) < 5)
-    
-    conf_data = {
-        _localized("high_confidence", lang): conf_high,
-        _localized("medium_confidence", lang): conf_mid,
-        _localized("low_confidence", lang): conf_low,
-    }
-    conf_bar = _create_bar_drawing(conf_data, width=240, height=80, color=BRAND_PURPLE)
-    
-    # Side by side: pie + confidence bar
-    chart_table = Table(
-        [[Paragraph(f'<b>{_localized("vote_distribution", lang)}</b>', styles['SubSection']),
-          Paragraph(f'<b>{_localized("confidence_distribution", lang)}</b>', styles['SubSection'])],
-         [pie_drawing, conf_bar]],
-        colWidths=[usable_width * 0.5, usable_width * 0.5],
+        dist = rd.get("vote_distribution", {})
+        if dist:
+            wn = max(dist, key=dist.get)
+            if lang == "tr":
+                return "En cok oy alan: " + wn + " (" + str(dist[wn]) + " oy)."
+            return "Top choice: " + wn + " (" + str(dist[wn]) + " votes)."
+    return ""
+
+
+# --- RESULT TABLE BUILDER ---
+def _build_result_rows(results, tt, s, lang, include_reasoning=False, max_rows=50):
+    """Build table header + data rows for persona results."""
+    if tt == "single":
+        if include_reasoning:
+            hdr = [L("persona", lang), L("age", lang), L("gen", lang), L("occ", lang), L("dec", lang), L("conf", lang), L("reason", lang)]
+            cw_ratios = [0.12, 0.05, 0.08, 0.12, 0.07, 0.06, 0.50]
+        else:
+            hdr = [L("persona", lang), L("age", lang), L("gen", lang), L("city", lang), L("dec", lang), L("conf", lang)]
+            cw_ratios = [0.22, 0.08, 0.13, 0.22, 0.18, 0.17]
+    elif tt == "ab_compare":
+        if include_reasoning:
+            hdr = [L("persona", lang), L("age", lang), L("gen", lang), L("choice", lang), L("conf", lang), L("reason", lang)]
+            cw_ratios = [0.14, 0.06, 0.10, 0.08, 0.07, 0.55]
+        else:
+            hdr = [L("persona", lang), L("age", lang), L("gen", lang), L("choice", lang), L("conf", lang)]
+            cw_ratios = [0.28, 0.10, 0.22, 0.20, 0.20]
+    else:
+        if include_reasoning:
+            hdr = [L("persona", lang), L("age", lang), L("choice", lang), L("conf", lang), L("reason", lang)]
+            cw_ratios = [0.14, 0.07, 0.10, 0.07, 0.62]
+        else:
+            hdr = [L("persona", lang), L("age", lang), L("choice", lang), L("conf", lang)]
+            cw_ratios = [0.30, 0.15, 0.30, 0.25]
+
+    td = [[Paragraph("<b>" + h + "</b>", s["hdr"]) for h in hdr]]
+
+    for r in results[:max_rows]:
+        if tt == "single":
+            dc = str(r.get("decision", "")).upper()
+            dcl = "#10B981" if dc in ("EVET", "YES") else "#EF4444"
+            dec_text = str(r.get("decision", ""))
+            row = [
+                Paragraph(_ss(r.get("persona_name", ""), 25), s["sm"]),
+                Paragraph(str(r.get("persona_age", "")), s["sm"]),
+                Paragraph(_ss(r.get("persona_gender", ""), 10), s["sm"]),
+            ]
+            if include_reasoning:
+                row.append(Paragraph(_ss(r.get("persona_occupation", ""), 18), s["sm"]))
+            else:
+                row.append(Paragraph(_ss(r.get("persona_city", ""), 20), s["sm"]))
+            row.append(Paragraph('<font color="' + dcl + '"><b>' + dec_text + '</b></font>', s["smb"]))
+            row.append(Paragraph(str(r.get("confidence", "")), s["sm"]))
+            if include_reasoning:
+                rsn = _rsn(r.get("reasoning", ""), lang)
+                row.append(Paragraph(_ss(rsn, 180), s["sm"]))
+
+        elif tt == "ab_compare":
+            ch = r.get("choice", r.get("decision", ""))
+            ch_upper = str(ch).upper()
+            cl = "#06B6D4" if ch_upper == "A" else "#8B5CF6" if ch_upper == "B" else "#64748B"
+            row = [
+                Paragraph(_ss(r.get("persona_name", ""), 30), s["sm"]),
+                Paragraph(str(r.get("persona_age", "")), s["sm"]),
+                Paragraph(_ss(r.get("persona_gender", ""), 10), s["sm"]),
+                Paragraph('<font color="' + cl + '"><b>' + str(ch) + '</b></font>', s["smb"]),
+                Paragraph(str(r.get("confidence", "")), s["sm"]),
+            ]
+            if include_reasoning:
+                rsn = _rsn(r.get("reasoning", ""), lang)
+                row.append(Paragraph(_ss(rsn, 180), s["sm"]))
+
+        else:
+            ch = r.get("choice", r.get("decision", ""))
+            row = [
+                Paragraph(_ss(r.get("persona_name", ""), 30), s["sm"]),
+                Paragraph(str(r.get("persona_age", "")), s["sm"]),
+                Paragraph('<font color="#06B6D4"><b>' + _ss(ch, 20) + '</b></font>', s["smb"]),
+                Paragraph(str(r.get("confidence", "")), s["sm"]),
+            ]
+            if include_reasoning:
+                rsn = _rsn(r.get("reasoning", ""), lang)
+                row.append(Paragraph(_ss(rsn, 180), s["sm"]))
+
+        td.append(row)
+
+    return td, cw_ratios
+
+
+def _style_table(tbl):
+    """Apply standard styling to results table."""
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), DARK),
+        ("TEXTCOLOR", (0, 0), (-1, 0), W),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [HexColor("#FFFFFF"), BGL]),
+        ("GRID", (0, 0), (-1, -1), 0.5, BGB),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    return tbl
+
+
+# ========== PRO REPORT ==========
+def generate_pro_report(rd, out, lang="en"):
+    _reg()
+    s = _st()
+    w, h = A4
+    uw = w - 40 * mm
+    doc = SimpleDocTemplate(out, pagesize=A4, leftMargin=20 * mm, rightMargin=20 * mm,
+                            topMargin=20 * mm, bottomMargin=20 * mm)
+    story = []
+    tt = rd.get("test_type", "single")
+
+    # Title
+    story.append(Spacer(1, 6 * mm))
+    story.append(Table([[""]], colWidths=[50], rowHeights=[3],
+                        style=TableStyle([("BACKGROUND", (0, 0), (-1, -1), CYAN)])))
+    story.append(Spacer(1, 2 * mm))
+    story.append(Paragraph(L("report", lang), s["title"]))
+    story.append(Paragraph(_ss(rd.get("campaign_name", ""), 80), s["sub"]))
+
+    # Info
+    story.append(_info_tbl(rd, tt, lang, uw))
+    story.append(Spacer(1, 3 * mm))
+
+    # Content
+    ct = rd.get("campaign_content", "")
+    if ct:
+        story.append(Paragraph(L("content", lang), s["ssec"]))
+        story.append(Paragraph(_ss(ct, 300), s["body"]))
+        story.append(Spacer(1, 3 * mm))
+
+    # Insight
+    ins = _insight(rd, tt, lang)
+    if ins:
+        ib = Table(
+            [[Paragraph(ins, s["body"])]],
+            colWidths=[uw],
+            style=TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), CYAN_L),
+                ("BOX", (0, 0), (-1, -1), 1, CYAN),
+                ("ROUNDEDCORNERS", [4, 4, 4, 4]),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ]),
+        )
+        story.append(ib)
+        story.append(Spacer(1, 4 * mm))
+
+    # Metrics
+    story.append(Paragraph(L("metrics", lang), s["sec"]))
+    mr = _metrics_row(rd, tt, lang, uw)
+    if mr:
+        story.append(mr)
+    story.append(Spacer(1, 5 * mm))
+
+    # Results table
+    story.append(Paragraph(L("responses", lang), s["sec"]))
+    results = rd.get("results", [])
+    if not results:
+        story.append(Paragraph(L("nodata", lang), s["body"]))
+    else:
+        td, cw_ratios = _build_result_rows(results, tt, s, lang, include_reasoning=False, max_rows=50)
+        cw = [uw * r for r in cw_ratios]
+        tbl = Table(td, colWidths=cw, repeatRows=1)
+        _style_table(tbl)
+        story.append(tbl)
+
+    # Footer
+    story.append(Spacer(1, 8 * mm))
+    story.append(Paragraph(L("gen_by", lang), s["ftr"]))
+
+    tl = L("pro", lang)
+    doc.build(story, onFirstPage=lambda c, d: _hf(c, d, rd, lang, tl),
+              onLaterPages=lambda c, d: _hf(c, d, rd, lang, tl))
+    return out
+
+
+# ========== BUSINESS REPORT ==========
+def generate_business_report(rd, out, lang="en"):
+    _reg()
+    s = _st()
+    w, h = A4
+    uw = w - 40 * mm
+    doc = SimpleDocTemplate(out, pagesize=A4, leftMargin=20 * mm, rightMargin=20 * mm,
+                            topMargin=20 * mm, bottomMargin=20 * mm)
+    story = []
+    tt = rd.get("test_type", "single")
+    results = rd.get("results", [])
+
+    # Cover
+    story.append(Spacer(1, 8 * mm))
+    ct_top = Table(
+        [[Paragraph('<font color="#FFFFFF"><b>SimuTarget.ai</b></font>',
+                     ParagraphStyle("ct", fontName=FB, fontSize=11, textColor=W, alignment=TA_LEFT, leading=14))]],
+        colWidths=[uw], rowHeights=[28],
         style=TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ])
+            ("BACKGROUND", (0, 0), (-1, -1), CYAN),
+            ("LEFTPADDING", (0, 0), (-1, -1), 12),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ROUNDEDCORNERS", [6, 6, 0, 0]),
+        ]),
     )
-    story.append(chart_table)
-    story.append(Spacer(1, 6*mm))
-    
-    # ── DEMOGRAPHIC ANALYSIS (Business exclusive) ──
-    story.append(Paragraph(_localized("demographic_analysis", lang), styles['SectionTitle']))
-    
-    gender_stats, age_stats, income_stats = _compute_demographics(results, lang)
-    
-    # Gender bar chart
-    gender_rates = {}
-    for g, stats in gender_stats.items():
-        rate = round(stats["yes"] / stats["total"] * 100) if stats["total"] > 0 else 0
-        gender_rates[f"{g} ({stats['total']})"] = rate
-    
-    # Age bar chart
-    age_rates = {}
-    age_order = ["18-24", "25-34", "35-44", "45-54", "55+"]
-    for ag in age_order:
-        if ag in age_stats:
-            stats = age_stats[ag]
-            rate = round(stats["yes"] / stats["total"] * 100) if stats["total"] > 0 else 0
-            age_rates[f"{ag} ({stats['total']})"] = rate
-    
-    # Income bar chart
-    income_rates = {}
-    for inc, stats in income_stats.items():
-        rate = round(stats["yes"] / stats["total"] * 100) if stats["total"] > 0 else 0
-        short_inc = inc[:12] + ".." if len(inc) > 14 else inc
-        income_rates[f"{short_inc} ({stats['total']})"] = rate
-    
-    gender_bar = _create_bar_drawing(gender_rates, width=240, height=max(60, len(gender_rates)*22), color=BRAND_CYAN)
-    age_bar = _create_bar_drawing(age_rates, width=240, height=max(60, len(age_rates)*22), color=BRAND_PURPLE)
-    
-    demo_table = Table(
-        [[Paragraph(f'<b>{_localized("by_gender", lang)}</b>', styles['SubSection']),
-          Paragraph(f'<b>{_localized("by_age_group", lang)}</b>', styles['SubSection'])],
-         [gender_bar, age_bar]],
-        colWidths=[usable_width * 0.5, usable_width * 0.5],
+    story.append(ct_top)
+    ct_bot = Table(
+        [[Paragraph("<b>" + L("report", lang) + "</b>",
+                     ParagraphStyle("cb1", fontName=FB, fontSize=22, textColor=TD, leading=28)),
+          Paragraph(rd.get("campaign_name", ""),
+                     ParagraphStyle("cb2", fontName=F, fontSize=11, textColor=TL, leading=14, alignment=TA_RIGHT))]],
+        colWidths=[uw * 0.6, uw * 0.4],
         style=TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ])
+            ("BACKGROUND", (0, 0), (-1, -1), BGL),
+            ("LEFTPADDING", (0, 0), (-1, -1), 12),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+            ("TOPPADDING", (0, 0), (-1, -1), 12),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ROUNDEDCORNERS", [0, 0, 6, 6]),
+            ("BOX", (0, 0), (-1, -1), 0.5, BGB),
+        ]),
     )
-    story.append(demo_table)
-    story.append(Spacer(1, 4*mm))
-    
-    if income_rates:
-        story.append(Paragraph(f'<b>{_localized("by_income_level", lang)}</b>', styles['SubSection']))
-        income_bar = _create_bar_drawing(income_rates, width=usable_width * 0.65, height=max(60, len(income_rates)*22), color=SUCCESS_GREEN)
-        story.append(income_bar)
-    story.append(Spacer(1, 6*mm))
-    
-    # ── DETAILED TABLE WITH REASONING (Business exclusive) ──
+    story.append(ct_bot)
+    story.append(Spacer(1, 5 * mm))
+
+    # Info
+    story.append(_info_tbl(rd, tt, lang, uw))
+    story.append(Spacer(1, 3 * mm))
+
+    # Content
+    cntnt = rd.get("campaign_content", "")
+    if cntnt:
+        story.append(Paragraph(L("content", lang), s["ssec"]))
+        story.append(Paragraph(_ss(cntnt, 600), s["body"]))
+        story.append(Spacer(1, 3 * mm))
+
+    # Insight
+    ins = _insight(rd, tt, lang)
+    if ins:
+        ib = Table(
+            [[Paragraph(ins, ParagraphStyle("ins", fontName=F, fontSize=10, leading=14, textColor=TD))]],
+            colWidths=[uw],
+            style=TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), CYAN_L),
+                ("BOX", (0, 0), (-1, -1), 1.5, CYAN),
+                ("ROUNDEDCORNERS", [6, 6, 6, 6]),
+                ("TOPPADDING", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+                ("LEFTPADDING", (0, 0), (-1, -1), 12),
+            ]),
+        )
+        story.append(ib)
+        story.append(Spacer(1, 4 * mm))
+
+    # Metrics
+    story.append(Paragraph(L("metrics", lang), s["sec"]))
+    mr = _metrics_row(rd, tt, lang, uw)
+    if mr:
+        story.append(mr)
+    story.append(Spacer(1, 5 * mm))
+
+    # Charts
+    story.append(Paragraph(L("overview", lang), s["sec"]))
+    if tt == "single":
+        pd = {L("yes", lang): rd.get("yes_count", 0), L("no", lang): rd.get("no_count", 0)}
+        pc = [GREEN, RED]
+    elif tt == "ab_compare":
+        pd = {L("optA", lang): rd.get("a_votes", 0), L("optB", lang): rd.get("b_votes", 0),
+              L("neither", lang): rd.get("neither_votes", 0)}
+        pc = [CYAN, PURPLE, TL]
+    else:
+        pd = rd.get("vote_distribution", {})
+        pc = CC
+
+    pie_d = _pie(pd, wd=220, ht=150, colors=pc)
+
+    ch_high = sum(1 for r in results if (r.get("confidence") or 0) >= 8)
+    ch_med = sum(1 for r in results if 5 <= (r.get("confidence") or 0) < 8)
+    ch_low = sum(1 for r in results if (r.get("confidence") or 0) < 5)
+    cd = {L("high", lang): ch_high, L("med", lang): ch_med, L("low", lang): ch_low}
+    conf_bar = _bar(cd, wd=240, ht=80, color=PURPLE)
+
+    cht = Table(
+        [[Paragraph("<b>" + L("votes", lang) + "</b>", s["ssec"]),
+          Paragraph("<b>" + L("confdist", lang) + "</b>", s["ssec"])],
+         [pie_d, conf_bar]],
+        colWidths=[uw * 0.5, uw * 0.5],
+        style=TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]),
+    )
+    story.append(cht)
+    story.append(Spacer(1, 5 * mm))
+
+    # Demographics
+    story.append(Paragraph(L("demo", lang), s["sec"]))
+    gn, ag, ic = _demographics(results)
+
+    gnr = {}
+    for g, st2 in gn.items():
+        rate = round(st2["y"] / st2["t"] * 100) if st2["t"] > 0 else 0
+        gnr[g + " (" + str(st2["t"]) + ")"] = rate
+
+    agr = {}
+    for a in ["18-24", "25-34", "35-44", "45-54", "55+"]:
+        if a in ag:
+            st2 = ag[a]
+            rate = round(st2["y"] / st2["t"] * 100) if st2["t"] > 0 else 0
+            agr[a + " (" + str(st2["t"]) + ")"] = rate
+
+    gb = _bar(gnr, wd=240, ht=max(60, len(gnr) * 22), color=CYAN, show_pct=True)
+    ab = _bar(agr, wd=240, ht=max(60, len(agr) * 22), color=PURPLE, show_pct=True)
+    dt = Table(
+        [[Paragraph("<b>" + L("gender", lang) + "</b>", s["ssec"]),
+          Paragraph("<b>" + L("agegrp", lang) + "</b>", s["ssec"])],
+         [gb, ab]],
+        colWidths=[uw * 0.5, uw * 0.5],
+        style=TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("TOPPADDING", (0, 0), (-1, -1), 4)]),
+    )
+    story.append(dt)
+    story.append(Spacer(1, 3 * mm))
+
+    if ic:
+        icr = {}
+        for inc_key, st2 in ic.items():
+            rate = round(st2["y"] / st2["t"] * 100) if st2["t"] > 0 else 0
+            icr[_ss(inc_key, 14) + " (" + str(st2["t"]) + ")"] = rate
+        story.append(Paragraph("<b>" + L("income", lang) + "</b>", s["ssec"]))
+        ib2 = _bar(icr, wd=int(uw * 0.7), ht=max(60, len(icr) * 22), color=GREEN, show_pct=True)
+        story.append(ib2)
+    story.append(Spacer(1, 5 * mm))
+
+    # Detailed table with reasoning
     story.append(PageBreak())
-    story.append(Paragraph(_localized("detailed_responses", lang), styles['SectionTitle']))
-    
-    if test_type == "single":
-        header = [
-            _localized("persona", lang), _localized("age", lang), _localized("gender", lang),
-            _localized("occupation", lang), _localized("decision", lang),
-            _localized("confidence", lang), _localized("reasoning", lang),
-        ]
-        col_widths = [usable_width*0.13, usable_width*0.06, usable_width*0.08,
-                      usable_width*0.13, usable_width*0.08, usable_width*0.07, usable_width*0.45]
-    elif test_type == "ab_compare":
-        header = [
-            _localized("persona", lang), _localized("age", lang), _localized("gender", lang),
-            _localized("choice", lang), _localized("confidence", lang), _localized("reasoning", lang),
-        ]
-        col_widths = [usable_width*0.14, usable_width*0.06, usable_width*0.1,
-                      usable_width*0.08, usable_width*0.07, usable_width*0.55]
+    story.append(Paragraph(L("responses", lang), s["sec"]))
+    if not results:
+        story.append(Paragraph(L("nodata", lang), s["body"]))
     else:
-        header = [
-            _localized("persona", lang), _localized("age", lang),
-            _localized("choice", lang), _localized("confidence", lang), _localized("reasoning", lang),
-        ]
-        col_widths = [usable_width*0.15, usable_width*0.07,
-                      usable_width*0.1, usable_width*0.08, usable_width*0.60]
-    
-    small_style = ParagraphStyle('small', fontName=FONT, fontSize=7, leading=9, textColor=TEXT_BODY)
-    small_bold = ParagraphStyle('smallb', fontName=FONT_BOLD, fontSize=7, leading=9, textColor=TEXT_BODY)
-    
-    table_data = [[Paragraph(f'<b>{h}</b>', ParagraphStyle('th', fontName=FONT_BOLD, fontSize=8, textColor=WHITE, leading=10)) for h in header]]
-    
-    for r in results[:100]:  # Business gets 100 rows
-        reasoning_text = _get_reasoning_text(r.get("reasoning", ""), lang)
-        if len(reasoning_text) > 150:
-            reasoning_text = reasoning_text[:150] + "..."
-        
-        if test_type == "single":
-            decision = r.get("decision", "")
-            dec_color = SUCCESS_GREEN if decision.upper() in ["EVET", "YES"] else DANGER_RED
-            row = [
-                Paragraph(r.get("persona_name", ""), small_style),
-                Paragraph(str(r.get("persona_age", "")), small_style),
-                Paragraph(r.get("persona_gender", ""), small_style),
-                Paragraph(r.get("persona_occupation", "")[:20], small_style),
-                Paragraph(f'<font color="#{dec_color.hexval()[2:]}">{decision}</font>', small_bold),
-                Paragraph(str(r.get("confidence", "")), small_style),
-                Paragraph(reasoning_text, small_style),
-            ]
-        elif test_type == "ab_compare":
-            choice = r.get("choice", "")
-            ch_color = BRAND_CYAN if choice == "A" else BRAND_PURPLE if choice == "B" else TEXT_LIGHT
-            row = [
-                Paragraph(r.get("persona_name", ""), small_style),
-                Paragraph(str(r.get("persona_age", "")), small_style),
-                Paragraph(r.get("persona_gender", ""), small_style),
-                Paragraph(f'<font color="#{ch_color.hexval()[2:]}">{choice}</font>', small_bold),
-                Paragraph(str(r.get("confidence", "")), small_style),
-                Paragraph(reasoning_text, small_style),
-            ]
-        else:
-            choice = r.get("choice", "")
-            row = [
-                Paragraph(r.get("persona_name", ""), small_style),
-                Paragraph(str(r.get("persona_age", "")), small_style),
-                Paragraph(f'<font color="#{BRAND_CYAN.hexval()[2:]}">{choice}</font>', small_bold),
-                Paragraph(str(r.get("confidence", "")), small_style),
-                Paragraph(reasoning_text, small_style),
-            ]
-        table_data.append(row)
-    
-    results_table = Table(table_data, colWidths=col_widths, repeatRows=1)
-    results_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), BRAND_DARK),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [BG_WHITE, BG_LIGHT]),
-        ('GRID', (0, 0), (-1, -1), 0.5, BG_BORDER),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('LEFTPADDING', (0, 0), (-1, -1), 4),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ]))
-    story.append(results_table)
-    
-    # ── FOOTER ──
-    story.append(Spacer(1, 10*mm))
-    story.append(Paragraph(
-        _localized("generated_by", lang),
-        styles['FooterText']
-    ))
-    
-    # Build
-    doc.build(story, onFirstPage=lambda c, d: _header_footer(c, d, report_data, lang),
-              onLaterPages=lambda c, d: _header_footer(c, d, report_data, lang))
-    
-    return output_path
+        td, cw_ratios = _build_result_rows(results, tt, s, lang, include_reasoning=True, max_rows=100)
+        cw = [uw * r for r in cw_ratios]
+        tbl = Table(td, colWidths=cw, repeatRows=1)
+        tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), DARK),
+            ("TEXTCOLOR", (0, 0), (-1, 0), W),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [HexColor("#FFFFFF"), BGL]),
+            ("GRID", (0, 0), (-1, -1), 0.5, BGB),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]))
+        story.append(tbl)
+
+    # Footer
+    story.append(Spacer(1, 8 * mm))
+    story.append(Paragraph(L("gen_by", lang), s["ftr"]))
+
+    tl = L("biz", lang)
+    doc.build(story, onFirstPage=lambda c, d: _hf(c, d, rd, lang, tl),
+              onLaterPages=lambda c, d: _hf(c, d, rd, lang, tl))
+    return out
 
 
-# ═══════════════════════════════════════════════════════════
-#  MAIN ENTRY POINT
-# ═══════════════════════════════════════════════════════════
-
-def generate_report(report_data: dict, output_path: str, tier: str = "pro", lang: str = "en") -> str:
-    """
-    Generate PDF report based on user's subscription tier.
-    
-    tier: "pro" | "business" | "enterprise"
-    """
+# ========== ENTRY ==========
+def generate_report(rd, out, tier="pro", lang="en"):
+    """Generate PDF report based on subscription tier."""
     if tier in ("business", "enterprise"):
-        return generate_business_report(report_data, output_path, lang)
-    else:
-        return generate_pro_report(report_data, output_path, lang)
-
-
-# ═══════════════════════════════════════════════════════════
-#  TEST / DEMO
-# ═══════════════════════════════════════════════════════════
-
-if __name__ == "__main__":
-    import random
-    
-    # Generate sample data
-    names_tr = ["Ahmet Yılmaz", "Fatma Kaya", "Mehmet Demir", "Ayşe Çelik", "Ali Öztürk",
-                "Zeynep Arslan", "Mustafa Koç", "Elif Şahin", "Hasan Yıldız", "Merve Aydın",
-                "Emre Doğan", "Selin Erdoğan", "Burak Kılıç", "Deniz Özkan", "Cem Aksoy"]
-    
-    cities = ["Istanbul", "Ankara", "Izmir", "Bursa", "Antalya", "Adana", "Konya"]
-    occupations = ["Engineer", "Teacher", "Doctor", "Designer", "Manager", "Student", "Accountant"]
-    genders = ["Male", "Female"]
-    
-    results = []
-    yes_count = 0
-    total_conf = 0
-    for i in range(25):
-        decision = random.choice(["YES", "YES", "YES", "NO", "NO"])
-        conf = random.randint(3, 10)
-        if decision == "YES":
-            yes_count += 1
-        total_conf += conf
-        
-        results.append({
-            "persona_name": random.choice(names_tr),
-            "persona_age": random.randint(22, 65),
-            "persona_gender": random.choice(genders),
-            "persona_city": random.choice(cities),
-            "persona_occupation": random.choice(occupations),
-            "decision": decision,
-            "confidence": conf,
-            "reasoning": json.dumps({
-                "tr": "Bu ürün ihtiyaçlarıma uygun görünüyor, fiyatı makul.",
-                "en": "This product seems to match my needs, the price is reasonable."
-            }),
-            "persona_data": {
-                "gender": random.choice(genders),
-                "age": random.randint(22, 65),
-                "income_level": random.choice(["Low", "Lower-Mid", "Middle", "Upper-Mid", "High"]),
-            }
-        })
-    
-    sample_data = {
-        "campaign_name": "Summer Sale 2025 — Beach Collection",
-        "campaign_content": "Discover our exclusive Summer Beach Collection! Premium swimwear and accessories at 40% off. Limited time offer for the whole family. Free shipping on orders over $50. Shop now and make this summer unforgettable!",
-        "test_type": "single",
-        "region": "TR",
-        "created_at": datetime.now().isoformat(),
-        "total_personas": 25,
-        "approval_rate": round(yes_count / 25 * 100, 1),
-        "avg_confidence": round(total_conf / 25, 1),
-        "yes_count": yes_count,
-        "no_count": 25 - yes_count,
-        "results": results,
-    }
-    
-    # Generate Pro report
-    generate_pro_report(sample_data, "/home/claude/sample_pro_report.pdf", lang="en")
-    print("Pro report generated: sample_pro_report.pdf")
-    
-    # Generate Business report
-    generate_business_report(sample_data, "/home/claude/sample_business_report.pdf", lang="en")
-    print("Business report generated: sample_business_report.pdf")
-    
-    # Generate Turkish versions
-    generate_pro_report(sample_data, "/home/claude/sample_pro_report_tr.pdf", lang="tr")
-    print("Pro report (TR) generated: sample_pro_report_tr.pdf")
-    
-    generate_business_report(sample_data, "/home/claude/sample_business_report_tr.pdf", lang="tr")
-    print("Business report (TR) generated: sample_business_report_tr.pdf")
+        return generate_business_report(rd, out, lang)
+    return generate_pro_report(rd, out, lang)
