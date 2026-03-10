@@ -19,8 +19,10 @@ class Base(DeclarativeBase):
 
 
 class SegmentType(str, enum.Enum):
-    TR = "TR"          # TÜİK bazlı Türkiye segmenti
-    GLOBAL = "GLOBAL"  # US/EU ağırlıklı global segment
+    TR = "TR"       # TÜİK bazlı Türkiye
+    EU = "EU"       # Avrupa (12 ülke)
+    USA = "USA"     # Amerika
+    MENA = "MENA"   # Dubai, Katar, Mısır, BAE
 
 
 class DecisionType(str, enum.Enum):
