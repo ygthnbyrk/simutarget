@@ -20,6 +20,10 @@ import argparse
 import os
 import sys
 
+# .env dosyasını otomatik yükle
+from dotenv import load_dotenv
+load_dotenv()
+
 
 def cmd_generate_all(args):
     """500K toplu üretim — tüm segmentler sırayla."""
