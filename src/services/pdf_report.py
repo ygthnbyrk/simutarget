@@ -558,7 +558,7 @@ def generate_business_report(rd, out, lang="en"):
     cntnt = rd.get("campaign_content", "")
     if cntnt:
         story.append(Paragraph(L("content", lang), s["ssec"]))
-        story.append(Paragraph(_ss(cntnt, 600), s["body"]))
+        story.append(Paragraph(_ss(cntnt, 300), s["body"]))
 
     # === PAGE 2: CHARTS ===
     story.append(PageBreak())
