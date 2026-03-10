@@ -146,6 +146,29 @@ _T = {
     "platform_desc": {"en": "AI-Powered Synthetic Market Research Platform",
                       "tr": "AI Destekli Sentetik Pazar Arastirma Platformu"},
     "key_finding": {"en": "Key Finding", "tr": "Temel Bulgu"},
+    "ent": {"en": "Enterprise Report", "tr": "Enterprise Rapor"},
+    "methodology": {"en": "Methodology", "tr": "Metodoloji"},
+    "method_title": {"en": "How SimuTarget Works", "tr": "SimuTarget Nasil Calisir"},
+    "method_p1": {"en": "SimuTarget uses AI-powered synthetic personas to simulate real consumer behavior. Each persona is generated with unique demographic, psychographic, and behavioral attributes based on statistical population models.",
+                  "tr": "SimuTarget, gercek tuketici davranisini simule etmek icin AI destekli sentetik personalar kullanir. Her persona, istatistiksel nufus modellerine dayanan benzersiz demografik, psikografik ve davranissal ozelliklerle olusturulur."},
+    "method_p2": {"en": "Personas evaluate campaigns using Large Language Models (LLMs) that consider their personality traits, income level, cultural background, and personal preferences to make purchase decisions.",
+                  "tr": "Personalar, kisilik ozellikleri, gelir duzeyi, kulturel arka plan ve kisisel tercihlerini dikkate alan Buyuk Dil Modelleri (LLM) kullanarak kampanyalari degerlendirir."},
+    "method_p3": {"en": "The Big Five personality model (OCEAN) is used to create psychologically diverse personas: Openness, Conscientiousness, Extraversion, Agreeableness, and Neuroticism.",
+                  "tr": "Big Five kisilik modeli (OCEAN), psikolojik olarak cesitli personalar olusturmak icin kullanilir: Yenilige Aciklik, Sorumluluk, Disa Donukluk, Uyumluluk ve Duygusal Hassasiyet."},
+    "method_p4": {"en": "Results are statistically aggregated across demographic segments to provide actionable insights for campaign optimization.",
+                  "tr": "Sonuclar, kampanya optimizasyonu icin uygulanabilir icgoruler saglamak uzere demografik segmentler arasinda istatistiksel olarak toplanir."},
+    "cross_analysis": {"en": "Cross-Segment Analysis", "tr": "Capraz Segment Analizi"},
+    "gender_detail": {"en": "Gender Analysis", "tr": "Cinsiyet Analizi"},
+    "age_detail": {"en": "Age Group Analysis", "tr": "Yas Grubu Analizi"},
+    "persona_cards": {"en": "Persona Spotlight", "tr": "Persona Vitrin"},
+    "top_approvers": {"en": "Top Approvers (Highest Confidence)", "tr": "En Guclu Onaylayanlar"},
+    "top_rejecters": {"en": "Top Rejecters (Highest Confidence)", "tr": "En Guclu Reddedenler"},
+    "score": {"en": "Score", "tr": "Skor"},
+    "gender_x_age": {"en": "Gender x Age Group", "tr": "Cinsiyet x Yas Grubu"},
+    "income_x_gender": {"en": "Income x Gender", "tr": "Gelir x Cinsiyet"},
+    "sample_size": {"en": "n", "tr": "n"},
+    "campaign_params": {"en": "Campaign Parameters", "tr": "Kampanya Parametreleri"},
+    "full_content": {"en": "Full Campaign Content", "tr": "Tam Kampanya Icerigi"},
 }
 
 def L(k, l="en"):
@@ -261,10 +284,10 @@ def _hbar(dd, wd=250, ht=None, color=None, show_pct=False):
         d.add(String(lw + ba + 4, y + 3, str(vl) + suffix, fontName=FB, fontSize=8, fillColor=TB))
     return d
 
-def _big5_chart(yes_avgs, no_avgs, lang="en", wd=None, ht=140):
+def _big5_chart(yes_avgs, no_avgs, lang="en", wd=None, ht=220):
     traits = ["openness", "conscientiousness", "extraversion", "agreeableness", "neuroticism"]
     if wd is None: wd = 480
-    d = Drawing(wd, ht); bar_h = 12; gap = 8; lw = 130; bar_area = wd - lw - 80; sy = ht - 15
+    d = Drawing(wd, ht); bar_h = 10; gap = 18; lw = 130; bar_area = wd - lw - 80; sy = ht - 20
     for i, trait in enumerate(traits):
         y = sy - i * (bar_h * 2 + gap)
         d.add(String(0, y + bar_h // 2, L(trait, lang), fontName=FB, fontSize=8, fillColor=TB))
@@ -627,7 +650,7 @@ def generate_business_report(rd, out, lang="en"):
     if has_b5:
         story.append(Paragraph(L("yes_group", lang) + " (n=" + str(yc) + ") vs " + L("no_group", lang) + " (n=" + str(nc) + ")", s["body_sm"]))
         story.append(Spacer(1, 2 * mm))
-        story.append(_big5_chart(ya, na, lang=lang, wd=int(uw), ht=140))
+        story.append(_big5_chart(ya, na, lang=lang, wd=int(uw), ht=220))
     else:
         story.append(Paragraph("Big Five data not available." if lang == "en" else "Big Five verisi mevcut degil.", s["body"]))
     story.append(Spacer(1, 6 * mm))
@@ -656,7 +679,7 @@ def generate_business_report(rd, out, lang="en"):
     else:
         if tt == "single":
             hdr = [L("persona", lang), L("age", lang), L("gen", lang), L("occ", lang), L("dec", lang), L("conf", lang), L("reason", lang)]
-            cw = [uw*0.12, uw*0.05, uw*0.08, uw*0.12, uw*0.09, uw*0.06, uw*0.48]
+            cw = [uw*0.11, uw*0.06, uw*0.12, uw*0.10, uw*0.09, uw*0.08, uw*0.44]
         elif tt == "ab_compare":
             hdr = [L("persona", lang), L("age", lang), L("gen", lang), L("choice", lang), L("conf", lang), L("reason", lang)]
             cw = [uw*0.14, uw*0.06, uw*0.10, uw*0.08, uw*0.07, uw*0.55]
@@ -698,9 +721,488 @@ def generate_business_report(rd, out, lang="en"):
     return out
 
 # ============================================================
+#  ENTERPRISE REPORT (12-15 pages full infographic)
+# ============================================================
+def generate_enterprise_report(rd, out, lang="en"):
+    _reg(); s = _st(); w, h = A4; uw = w - 40 * mm
+    doc = SimpleDocTemplate(out, pagesize=A4, leftMargin=20*mm, rightMargin=20*mm, topMargin=20*mm, bottomMargin=20*mm)
+    story = []; tt = rd.get("test_type", "single"); results = rd.get("results", [])
+    apr = _sf(rd.get("approval_rate", 0)); ac = _sf(rd.get("avg_confidence", 0))
+    n_personas = rd.get("total_personas", 0)
+
+    # === PAGE 1: PREMIUM COVER ===
+    story.append(Spacer(1, 30 * mm))
+    cover = Table(
+        [[Paragraph("SimuTarget.ai", ParagraphStyle("cvb", fontName=FB, fontSize=16, textColor=CYAN, leading=20))],
+         [Spacer(1, 6 * mm)],
+         [Paragraph(L("report", lang), s["cover_title"])],
+         [Spacer(1, 4 * mm)],
+         [Paragraph(_ss(rd.get("campaign_name", ""), 120), s["cover_sub"])],
+         [Spacer(1, 15 * mm)],
+         [Paragraph(L("ent", lang).upper(), ParagraphStyle("et", fontName=FB, fontSize=12, textColor=CYAN, leading=16))],
+         [Spacer(1, 4 * mm)],
+         [Paragraph(L("platform_desc", lang), ParagraphStyle("pd", fontName=F, fontSize=10, textColor=TM, leading=14))],
+         [Spacer(1, 4 * mm)],
+         [Paragraph(_fd(rd.get("created_at", "")), ParagraphStyle("dt", fontName=F, fontSize=10, textColor=TM, leading=14))]],
+        colWidths=[uw],
+        style=TableStyle([("BACKGROUND", (0, 0), (-1, -1), DARK), ("LEFTPADDING", (0, 0), (-1, -1), 25),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 25), ("TOPPADDING", (0, 0), (0, 0), 30),
+            ("BOTTOMPADDING", (0, -1), (-1, -1), 30), ("ROUNDEDCORNERS", [10, 10, 10, 10])]))
+    story.append(cover)
+
+    # === PAGE 2: EXECUTIVE SUMMARY ===
+    story.append(PageBreak())
+    story.append(Paragraph(L("exec_summary", lang), s["sec"]))
+
+    # 6 metrics in 2 rows
+    row1 = [
+        _mc(str(round(apr, 1)) + "%", L("approval", lang), GREEN if apr >= 50 else RED),
+        _mc(str(round(ac, 1)) + "/10", L("avgconf", lang), PURPLE),
+        _mc(str(n_personas), L("total", lang), CYAN),
+    ]
+    row2 = [
+        _mc(str(rd.get("yes_count", 0)), L("yes_v", lang), GREEN),
+        _mc(str(rd.get("no_count", 0)), L("no_v", lang), RED),
+        _mc(str(rd.get("yes_count", 0)) + "/" + str(rd.get("no_count", 0)), L("yes", lang) + " / " + L("no", lang), AMBER),
+    ]
+    ecw = uw / 3
+    story.append(Table([row1], colWidths=[ecw]*3, style=TableStyle([("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),3),("RIGHTPADDING",(0,0),(-1,-1),3)])))
+    story.append(Spacer(1, 3 * mm))
+    story.append(Table([row2], colWidths=[ecw]*3, style=TableStyle([("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),3),("RIGHTPADDING",(0,0),(-1,-1),3)])))
+    story.append(Spacer(1, 5 * mm))
+
+    ins = _insight(rd, tt, lang)
+    if ins:
+        story.append(Paragraph("<b>" + L("key_finding", lang) + ":</b>", s["ssec"]))
+        story.append(_insight_box(ins, s, uw))
+    story.append(Spacer(1, 5 * mm))
+
+    # Quick info table
+    story.append(_info_tbl(rd, tt, lang, uw))
+
+    # === PAGE 3: CAMPAIGN DETAILS (full) ===
+    story.append(PageBreak())
+    story.append(Paragraph(L("campaign_params", lang), s["sec"]))
+    story.append(_info_tbl(rd, tt, lang, uw))
+    story.append(Spacer(1, 5 * mm))
+    cntnt = rd.get("campaign_content", "")
+    if cntnt:
+        story.append(Paragraph(L("full_content", lang), s["ssec"]))
+        story.append(Paragraph(_ss(cntnt, 2000), s["body"]))
+
+    # === PAGE 4: VOTE DISTRIBUTION + CONFIDENCE ===
+    story.append(PageBreak())
+    story.append(Paragraph(L("overview", lang), s["sec"]))
+
+    if tt == "single":
+        pd_data = {L("yes", lang): rd.get("yes_count", 0), L("no", lang): rd.get("no_count", 0)}; pc = [GREEN, RED]
+    elif tt == "ab_compare":
+        pd_data = {L("optA", lang): rd.get("a_votes", 0), L("optB", lang): rd.get("b_votes", 0), L("neither", lang): rd.get("neither_votes", 0)}; pc = [CYAN, PURPLE, TL]
+    else:
+        pd_data = rd.get("vote_distribution", {}); pc = CC
+
+    # Large pie
+    story.append(Paragraph("<b>" + L("votes", lang) + "</b>", s["ssec"]))
+    story.append(_pie(pd_data, wd=320, ht=200, colors=pc))
+    story.append(Spacer(1, 6 * mm))
+
+    # Detailed confidence breakdown
+    story.append(Paragraph("<b>" + L("confdist", lang) + "</b>", s["ssec"]))
+    ch_h = sum(1 for r in results if (r.get("confidence") or 0) >= 8)
+    ch_m = sum(1 for r in results if 5 <= (r.get("confidence") or 0) < 8)
+    ch_l = sum(1 for r in results if (r.get("confidence") or 0) < 5)
+    total_r = len(results) or 1
+
+    conf_tbl_data = [
+        [Paragraph("<b>" + L("confdist", lang) + "</b>", s["hdr"]),
+         Paragraph("<b>" + L("total_count", lang) + "</b>", s["hdr"]),
+         Paragraph("<b>%</b>", s["hdr"])],
+        [Paragraph(L("high", lang), s["sm"]),
+         Paragraph(str(ch_h), s["smb"]),
+         Paragraph(str(round(ch_h / total_r * 100)) + "%", s["smb"])],
+        [Paragraph(L("med", lang), s["sm"]),
+         Paragraph(str(ch_m), s["smb"]),
+         Paragraph(str(round(ch_m / total_r * 100)) + "%", s["smb"])],
+        [Paragraph(L("low", lang), s["sm"]),
+         Paragraph(str(ch_l), s["smb"]),
+         Paragraph(str(round(ch_l / total_r * 100)) + "%", s["smb"])],
+    ]
+    ct = Table(conf_tbl_data, colWidths=[uw * 0.50, uw * 0.25, uw * 0.25], repeatRows=1)
+    _tbl_style(ct); story.append(ct)
+    story.append(Spacer(1, 4 * mm))
+    story.append(_hbar({L("high", lang): ch_h, L("med", lang): ch_m, L("low", lang): ch_l}, wd=int(uw * 0.7), ht=80, color=PURPLE))
+
+    # === PAGE 5: GENDER ANALYSIS (dedicated) ===
+    story.append(PageBreak())
+    story.append(Paragraph(L("gender_detail", lang), s["sec"]))
+    gn, ag, ic = _demographics(results)
+
+    # Gender chart
+    gnr = {g + " (" + str(v["t"]) + ")": (round(v["y"]/v["t"]*100) if v["t"] > 0 else 0) for g, v in gn.items()}
+    story.append(_hbar(gnr, wd=int(uw * 0.75), ht=max(80, len(gnr) * 28), color=CYAN, show_pct=True))
+    story.append(Spacer(1, 5 * mm))
+
+    # Gender detailed table
+    g_hdr = [L("gen", lang), L("total_count", lang), L("yes_count_h", lang), L("no_count_h", lang), L("rate_h", lang), L("avgconf", lang)]
+    g_td = [[Paragraph("<b>" + h + "</b>", s["hdr"]) for h in g_hdr]]
+    for g_name, v in gn.items():
+        rate = round(v["y"] / v["t"] * 100) if v["t"] > 0 else 0
+        rc = "#10B981" if rate >= 50 else "#EF4444" if rate < 30 else "#F59E0B"
+        g_confs = [r.get("confidence", 0) for r in results
+                   if (r.get("persona_data", {}) if isinstance(r.get("persona_data"), dict) else {}).get("gender", r.get("persona_gender", "")) == g_name]
+        avg_c = round(sum(g_confs) / len(g_confs), 1) if g_confs else 0
+        g_td.append([
+            Paragraph(g_name, s["sm"]), Paragraph(str(v["t"]), s["sm"]),
+            Paragraph('<font color="#10B981"><b>' + str(v["y"]) + "</b></font>", s["smb"]),
+            Paragraph('<font color="#EF4444"><b>' + str(v["t"] - v["y"]) + "</b></font>", s["smb"]),
+            Paragraph('<font color="' + rc + '"><b>' + str(rate) + "%</b></font>", s["smb"]),
+            Paragraph(str(avg_c) + "/10", s["sm"]),
+        ])
+    gt = Table(g_td, colWidths=[uw*0.20, uw*0.15, uw*0.15, uw*0.15, uw*0.18, uw*0.17], repeatRows=1)
+    _tbl_style(gt); story.append(gt)
+
+    # === PAGE 6: AGE GROUP ANALYSIS (dedicated) ===
+    story.append(PageBreak())
+    story.append(Paragraph(L("age_detail", lang), s["sec"]))
+
+    agr = {}
+    for a in ["18-24", "25-34", "35-44", "45-54", "55+"]:
+        if a in ag:
+            v = ag[a]; agr[a + " (" + str(v["t"]) + ")"] = round(v["y"]/v["t"]*100) if v["t"] > 0 else 0
+    story.append(_hbar(agr, wd=int(uw * 0.75), ht=max(80, len(agr) * 28), color=PURPLE, show_pct=True))
+    story.append(Spacer(1, 5 * mm))
+
+    # Age detailed table
+    a_hdr = [L("agegrp", lang), L("total_count", lang), L("yes_count_h", lang), L("no_count_h", lang), L("rate_h", lang), L("avgconf", lang)]
+    a_td = [[Paragraph("<b>" + h + "</b>", s["hdr"]) for h in a_hdr]]
+    for age_grp in ["18-24", "25-34", "35-44", "45-54", "55+"]:
+        if age_grp not in ag:
+            continue
+        v = ag[age_grp]
+        rate = round(v["y"] / v["t"] * 100) if v["t"] > 0 else 0
+        rc = "#10B981" if rate >= 50 else "#EF4444" if rate < 30 else "#F59E0B"
+        # avg confidence for this age group
+        def _age_grp(a):
+            if a < 25: return "18-24"
+            elif a < 35: return "25-34"
+            elif a < 45: return "35-44"
+            elif a < 55: return "45-54"
+            else: return "55+"
+        a_confs = []
+        for r in results:
+            pd = r.get("persona_data", {}) if isinstance(r.get("persona_data"), dict) else {}
+            try:
+                ra = int(pd.get("age", r.get("persona_age", 0)))
+            except:
+                ra = 0
+            if _age_grp(ra) == age_grp:
+                a_confs.append(r.get("confidence", 0))
+        avg_c = round(sum(a_confs) / len(a_confs), 1) if a_confs else 0
+        a_td.append([
+            Paragraph(age_grp, s["sm"]), Paragraph(str(v["t"]), s["sm"]),
+            Paragraph('<font color="#10B981"><b>' + str(v["y"]) + "</b></font>", s["smb"]),
+            Paragraph('<font color="#EF4444"><b>' + str(v["t"] - v["y"]) + "</b></font>", s["smb"]),
+            Paragraph('<font color="' + rc + '"><b>' + str(rate) + "%</b></font>", s["smb"]),
+            Paragraph(str(avg_c) + "/10", s["sm"]),
+        ])
+    at = Table(a_td, colWidths=[uw*0.20, uw*0.15, uw*0.15, uw*0.15, uw*0.18, uw*0.17], repeatRows=1)
+    _tbl_style(at); story.append(at)
+
+    # === PAGE 7: INCOME CORRELATION ===
+    story.append(PageBreak())
+    story.append(Paragraph(L("income_corr", lang), s["sec"]))
+
+    inc_data = _income_correlation(results)
+    if inc_data:
+        # Chart
+        icr = {_ss(k, 14) + " (" + str(v["t"]) + ")": (round(v["y"]/v["t"]*100) if v["t"] > 0 else 0) for k, v in inc_data}
+        story.append(_hbar(icr, wd=int(uw * 0.75), ht=max(80, len(icr) * 28), color=GREEN, show_pct=True))
+        story.append(Spacer(1, 5 * mm))
+
+        # Detailed table
+        ihdr = [L("income_level", lang), L("total_count", lang), L("yes_count_h", lang), L("no_count_h", lang), L("rate_h", lang), L("avgconf", lang)]
+        itd = [[Paragraph("<b>" + h + "</b>", s["hdr"]) for h in ihdr]]
+        for inc_name, v in inc_data:
+            rate = round(v["y"]/v["t"]*100) if v["t"] > 0 else 0
+            rc = "#10B981" if rate >= 50 else "#EF4444" if rate < 30 else "#F59E0B"
+            # avg confidence for income level
+            i_confs = [r.get("confidence", 0) for r in results
+                       if (r.get("persona_data", {}) if isinstance(r.get("persona_data"), dict) else {}).get("income_level", "") == inc_name]
+            avg_c = round(sum(i_confs) / len(i_confs), 1) if i_confs else 0
+            itd.append([
+                Paragraph(_ss(inc_name, 20), s["sm"]), Paragraph(str(v["t"]), s["sm"]),
+                Paragraph('<font color="#10B981"><b>' + str(v["y"]) + "</b></font>", s["smb"]),
+                Paragraph('<font color="#EF4444"><b>' + str(v["t"]-v["y"]) + "</b></font>", s["smb"]),
+                Paragraph('<font color="' + rc + '"><b>' + str(rate) + "%</b></font>", s["smb"]),
+                Paragraph(str(avg_c) + "/10", s["sm"]),
+            ])
+        it = Table(itd, colWidths=[uw*0.22, uw*0.14, uw*0.14, uw*0.14, uw*0.18, uw*0.18], repeatRows=1)
+        _tbl_style(it); story.append(it)
+
+    # === PAGE 8: CITY/REGIONAL ANALYSIS ===
+    story.append(PageBreak())
+    story.append(Paragraph(L("city_analysis", lang), s["sec"]))
+    cd2 = _city_stats(results)
+    if cd2:
+        chdr = [L("city_name", lang), L("total_count", lang), L("yes_count_h", lang), L("no_count_h", lang), L("rate_h", lang), L("avgconf", lang)]
+        ctd = [[Paragraph("<b>" + h + "</b>", s["hdr"]) for h in chdr]]
+        for cn, v in sorted(cd2.items(), key=lambda x: x[1]["t"], reverse=True):
+            rate = round(v["y"]/v["t"]*100) if v["t"] > 0 else 0
+            rc = "#10B981" if rate >= 50 else "#EF4444" if rate < 30 else "#F59E0B"
+            c_confs = [r.get("confidence", 0) for r in results
+                       if (r.get("persona_data", {}) if isinstance(r.get("persona_data"), dict) else {}).get("city", r.get("persona_city", "")) == cn]
+            avg_c = round(sum(c_confs) / len(c_confs), 1) if c_confs else 0
+            ctd.append([
+                Paragraph(_ss(cn, 25), s["sm"]), Paragraph(str(v["t"]), s["sm"]),
+                Paragraph('<font color="#10B981"><b>' + str(v["y"]) + "</b></font>", s["smb"]),
+                Paragraph('<font color="#EF4444"><b>' + str(v["n"]) + "</b></font>", s["smb"]),
+                Paragraph('<font color="' + rc + '"><b>' + str(rate) + "%</b></font>", s["smb"]),
+                Paragraph(str(avg_c) + "/10", s["sm"]),
+            ])
+        ctbl = Table(ctd, colWidths=[uw*0.22, uw*0.14, uw*0.14, uw*0.14, uw*0.18, uw*0.18], repeatRows=1)
+        _tbl_style(ctbl); story.append(ctbl)
+
+    # === PAGE 9: BIG FIVE PERSONALITY (detailed) ===
+    story.append(PageBreak())
+    story.append(Paragraph(L("personality", lang), s["sec"]))
+    ya, na, yc, nc = _big5_averages(results)
+    has_b5 = any(v > 0 for v in ya.values()) or any(v > 0 for v in na.values())
+
+    if has_b5:
+        story.append(Paragraph(L("yes_group", lang) + " (n=" + str(yc) + ") vs " + L("no_group", lang) + " (n=" + str(nc) + ")", s["body_sm"]))
+        story.append(Spacer(1, 2 * mm))
+        story.append(_big5_chart(ya, na, lang=lang, wd=int(uw), ht=220))
+        story.append(Spacer(1, 5 * mm))
+
+        # Detailed trait table
+        traits = ["openness", "conscientiousness", "extraversion", "agreeableness", "neuroticism"]
+        b5_hdr = ["Trait", L("yes_group", lang) + " (0-10)", L("no_group", lang) + " (0-10)", "Delta"]
+        b5_td = [[Paragraph("<b>" + h + "</b>", s["hdr"]) for h in b5_hdr]]
+        for t in traits:
+            y_val = round(ya[t] * 10, 1)
+            n_val = round(na[t] * 10, 1)
+            delta = round(y_val - n_val, 1)
+            dc = "#10B981" if delta > 0 else "#EF4444" if delta < 0 else "#64748B"
+            delta_str = ("+" if delta > 0 else "") + str(delta)
+            b5_td.append([
+                Paragraph(L(t, lang), s["smb"]),
+                Paragraph('<font color="#10B981"><b>' + str(y_val) + "</b></font>", s["smb"]),
+                Paragraph('<font color="#EF4444"><b>' + str(n_val) + "</b></font>", s["smb"]),
+                Paragraph('<font color="' + dc + '"><b>' + delta_str + "</b></font>", s["smb"]),
+            ])
+        b5t = Table(b5_td, colWidths=[uw*0.35, uw*0.22, uw*0.22, uw*0.21], repeatRows=1)
+        _tbl_style(b5t); story.append(b5t)
+    else:
+        story.append(Paragraph("Big Five data not available." if lang == "en" else "Big Five verisi mevcut degil.", s["body"]))
+
+    # === PAGE 10: PERSONA PROFILE CARDS ===
+    story.append(PageBreak())
+    story.append(Paragraph(L("persona_cards", lang), s["sec"]))
+
+    # Sort by confidence
+    sorted_yes = sorted([r for r in results if str(r.get("decision", "")).upper() in ("EVET", "YES", "A")],
+                        key=lambda x: x.get("confidence", 0), reverse=True)
+    sorted_no = sorted([r for r in results if str(r.get("decision", "")).upper() not in ("EVET", "YES", "A")],
+                       key=lambda x: x.get("confidence", 0), reverse=True)
+
+    def _persona_card(r, s, uw, color):
+        pd = r.get("persona_data", {}) if isinstance(r.get("persona_data"), dict) else {}
+        rsn = _rsn(r.get("reasoning", ""), lang)
+        name = r.get("persona_name", "?")
+        info = str(r.get("persona_age", "")) + " | " + r.get("persona_gender", "") + " | " + r.get("persona_occupation", "") + " | " + (pd.get("city", r.get("persona_city", "")))
+        dec = str(r.get("decision", ""))
+        conf = str(r.get("confidence", ""))
+        card_data = [
+            [Paragraph('<font color="' + _hx(color) + '"><b>' + name + '</b></font>', s["smb"]),
+             Paragraph('<font color="' + _hx(color) + '"><b>' + dec + " (" + conf + "/10)</b></font>", s["smb"])],
+            [Paragraph(info, ParagraphStyle("ci", fontName=F, fontSize=7, textColor=TL, leading=10)), Paragraph("", s["sm"])],
+            [Paragraph(_ss(rsn, 250), s["sm"]), Paragraph("", s["sm"])],
+        ]
+        return Table(card_data, colWidths=[uw * 0.7, uw * 0.3],
+            style=TableStyle([("BACKGROUND", (0, 0), (-1, -1), BGL), ("BOX", (0, 0), (-1, -1), 1, color),
+                ("ROUNDEDCORNERS", [6, 6, 6, 6]), ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6), ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8)]))
+
+    story.append(Paragraph("<b>" + L("top_approvers", lang) + "</b>", s["ssec"]))
+    for r in sorted_yes[:3]:
+        story.append(_persona_card(r, s, uw, GREEN))
+        story.append(Spacer(1, 2 * mm))
+
+    story.append(Spacer(1, 4 * mm))
+    story.append(Paragraph("<b>" + L("top_rejecters", lang) + "</b>", s["ssec"]))
+    for r in sorted_no[:3]:
+        story.append(_persona_card(r, s, uw, RED))
+        story.append(Spacer(1, 2 * mm))
+
+    # === PAGE 11: CROSS-SEGMENT ANALYSIS ===
+    story.append(PageBreak())
+    story.append(Paragraph(L("cross_analysis", lang), s["sec"]))
+
+    # Gender x Age Group matrix
+    story.append(Paragraph("<b>" + L("gender_x_age", lang) + "</b>", s["ssec"]))
+    age_groups = ["18-24", "25-34", "35-44", "45-54", "55+"]
+    genders = sorted(gn.keys())
+    def _age_grp2(a):
+        if a < 25: return "18-24"
+        elif a < 35: return "25-34"
+        elif a < 45: return "35-44"
+        elif a < 55: return "45-54"
+        else: return "55+"
+
+    cross_gxa = {}
+    for r in results:
+        pd = r.get("persona_data", {}) if isinstance(r.get("persona_data"), dict) else {}
+        g = pd.get("gender", r.get("persona_gender", "?"))
+        try:
+            a = int(pd.get("age", r.get("persona_age", 0)))
+        except:
+            a = 0
+        agrp = _age_grp2(a)
+        dec = str(r.get("decision", "")).upper()
+        isy = dec in ("EVET", "YES", "A")
+        key = (g, agrp)
+        cross_gxa.setdefault(key, {"t": 0, "y": 0})
+        cross_gxa[key]["t"] += 1
+        if isy:
+            cross_gxa[key]["y"] += 1
+
+    mx_hdr = [Paragraph("", s["hdr"])] + [Paragraph("<b>" + ag + "</b>", s["hdr"]) for ag in age_groups]
+    mx_data = [mx_hdr]
+    for g in genders:
+        row = [Paragraph("<b>" + g + "</b>", s["smb"])]
+        for ag in age_groups:
+            v = cross_gxa.get((g, ag), {"t": 0, "y": 0})
+            if v["t"] > 0:
+                rate = round(v["y"] / v["t"] * 100)
+                rc = "#10B981" if rate >= 50 else "#EF4444" if rate < 30 else "#F59E0B"
+                row.append(Paragraph('<font color="' + rc + '"><b>' + str(rate) + '%</b></font> <font color="#64748B">(n=' + str(v["t"]) + ')</font>', s["sm"]))
+            else:
+                row.append(Paragraph("-", s["sm"]))
+        mx_data.append(row)
+    ncols = len(age_groups) + 1
+    mx_cw = [uw * 0.18] + [uw * 0.82 / len(age_groups)] * len(age_groups)
+    mxt = Table(mx_data, colWidths=mx_cw, repeatRows=1)
+    _tbl_style(mxt); story.append(mxt)
+    story.append(Spacer(1, 8 * mm))
+
+    # Income x Gender matrix
+    story.append(Paragraph("<b>" + L("income_x_gender", lang) + "</b>", s["ssec"]))
+    inc_levels = []
+    for r in results:
+        pd = r.get("persona_data", {}) if isinstance(r.get("persona_data"), dict) else {}
+        il = pd.get("income_level", "?")
+        if il not in inc_levels:
+            inc_levels.append(il)
+
+    cross_ixg = {}
+    for r in results:
+        pd = r.get("persona_data", {}) if isinstance(r.get("persona_data"), dict) else {}
+        g = pd.get("gender", r.get("persona_gender", "?"))
+        il = pd.get("income_level", "?")
+        dec = str(r.get("decision", "")).upper()
+        isy = dec in ("EVET", "YES", "A")
+        key = (il, g)
+        cross_ixg.setdefault(key, {"t": 0, "y": 0})
+        cross_ixg[key]["t"] += 1
+        if isy:
+            cross_ixg[key]["y"] += 1
+
+    ix_hdr = [Paragraph("", s["hdr"])] + [Paragraph("<b>" + g + "</b>", s["hdr"]) for g in genders]
+    ix_data = [ix_hdr]
+    for il in inc_levels:
+        row = [Paragraph("<b>" + _ss(il, 14) + "</b>", s["smb"])]
+        for g in genders:
+            v = cross_ixg.get((il, g), {"t": 0, "y": 0})
+            if v["t"] > 0:
+                rate = round(v["y"] / v["t"] * 100)
+                rc = "#10B981" if rate >= 50 else "#EF4444" if rate < 30 else "#F59E0B"
+                row.append(Paragraph('<font color="' + rc + '"><b>' + str(rate) + '%</b></font> <font color="#64748B">(n=' + str(v["t"]) + ')</font>', s["sm"]))
+            else:
+                row.append(Paragraph("-", s["sm"]))
+        ix_data.append(row)
+    ix_cw = [uw * 0.25] + [uw * 0.75 / max(len(genders), 1)] * len(genders)
+    ixt = Table(ix_data, colWidths=ix_cw, repeatRows=1)
+    _tbl_style(ixt); story.append(ixt)
+
+    # === PAGES 12-14: FULL PERSONA TABLE WITH REASONING ===
+    story.append(PageBreak())
+    story.append(Paragraph(L("responses", lang), s["sec"]))
+    if not results:
+        story.append(Paragraph(L("nodata", lang), s["body"]))
+    else:
+        if tt == "single":
+            hdr = [L("persona", lang), L("age", lang), L("gen", lang), L("occ", lang), L("dec", lang), L("conf", lang), L("reason", lang)]
+            cw = [uw*0.11, uw*0.06, uw*0.12, uw*0.10, uw*0.09, uw*0.08, uw*0.44]
+        elif tt == "ab_compare":
+            hdr = [L("persona", lang), L("age", lang), L("gen", lang), L("choice", lang), L("conf", lang), L("reason", lang)]
+            cw = [uw*0.14, uw*0.06, uw*0.10, uw*0.08, uw*0.07, uw*0.55]
+        else:
+            hdr = [L("persona", lang), L("age", lang), L("choice", lang), L("conf", lang), L("reason", lang)]
+            cw = [uw*0.14, uw*0.07, uw*0.10, uw*0.07, uw*0.62]
+        td = [[Paragraph("<b>" + h + "</b>", s["hdr"]) for h in hdr]]
+        for r in results:  # ALL rows for enterprise
+            rsn = _rsn(r.get("reasoning", ""), lang)
+            if len(rsn) > 250: rsn = rsn[:250] + "..."
+            dec = str(r.get("decision", "")); dec_u = dec.upper(); chv = r.get("choice", dec)
+            if tt == "single":
+                dcl = "#10B981" if dec_u in ("EVET", "YES") else "#EF4444"
+                row = [Paragraph(_ss(r.get("persona_name", ""), 18), s["sm"]), Paragraph(str(r.get("persona_age", "")), s["sm"]),
+                    Paragraph(_ss(r.get("persona_gender", ""), 8), s["sm"]), Paragraph(_ss(r.get("persona_occupation", ""), 18), s["sm"]),
+                    Paragraph('<font color="' + dcl + '"><b>' + dec + "</b></font>", s["smb"]),
+                    Paragraph(str(r.get("confidence", "")), s["sm"]), Paragraph(_ss(rsn, 250), s["sm"])]
+            elif tt == "ab_compare":
+                ccl = "#06B6D4" if str(chv).upper() == "A" else "#8B5CF6" if str(chv).upper() == "B" else "#64748B"
+                row = [Paragraph(_ss(r.get("persona_name", ""), 20), s["sm"]), Paragraph(str(r.get("persona_age", "")), s["sm"]),
+                    Paragraph(_ss(r.get("persona_gender", ""), 8), s["sm"]),
+                    Paragraph('<font color="' + ccl + '"><b>' + str(chv) + "</b></font>", s["smb"]),
+                    Paragraph(str(r.get("confidence", "")), s["sm"]), Paragraph(_ss(rsn, 250), s["sm"])]
+            else:
+                row = [Paragraph(_ss(r.get("persona_name", ""), 20), s["sm"]), Paragraph(str(r.get("persona_age", "")), s["sm"]),
+                    Paragraph('<font color="#06B6D4"><b>' + _ss(chv, 15) + "</b></font>", s["smb"]),
+                    Paragraph(str(r.get("confidence", "")), s["sm"]), Paragraph(_ss(rsn, 250), s["sm"])]
+            td.append(row)
+        tbl = Table(td, colWidths=cw, repeatRows=1)
+        tbl.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),DARK),("TEXTCOLOR",(0,0),(-1,0),W),
+            ("ROWBACKGROUNDS",(0,1),(-1,-1),[W,BGL]),("GRID",(0,0),(-1,-1),0.5,BGB),
+            ("TOPPADDING",(0,0),(-1,-1),3),("BOTTOMPADDING",(0,0),(-1,-1),3),
+            ("LEFTPADDING",(0,0),(-1,-1),4),("RIGHTPADDING",(0,0),(-1,-1),4),("VALIGN",(0,0),(-1,-1),"TOP")]))
+        story.append(tbl)
+
+    # === LAST PAGE: METHODOLOGY ===
+    story.append(PageBreak())
+    story.append(Paragraph(L("method_title", lang), s["sec"]))
+    story.append(Spacer(1, 3 * mm))
+
+    # Methodology content in styled boxes
+    method_paragraphs = ["method_p1", "method_p2", "method_p3", "method_p4"]
+    method_icons = ["1", "2", "3", "4"]
+    for i, mp in enumerate(method_paragraphs):
+        mb = Table(
+            [[Paragraph('<font color="' + _hx(CYAN) + '"><b>' + method_icons[i] + '</b></font>',
+                ParagraphStyle("mi", fontName=FB, fontSize=14, alignment=TA_CENTER, textColor=CYAN, leading=18)),
+              Paragraph(L(mp, lang), s["body"])]],
+            colWidths=[30, uw - 30],
+            style=TableStyle([("BACKGROUND", (0, 0), (-1, -1), BGL),
+                ("BOX", (0, 0), (-1, -1), 0.5, BGB), ("ROUNDEDCORNERS", [6, 6, 6, 6]),
+                ("TOPPADDING", (0, 0), (-1, -1), 10), ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10), ("VALIGN", (0, 0), (0, 0), "TOP")]))
+        story.append(mb)
+        story.append(Spacer(1, 3 * mm))
+
+    story.append(Spacer(1, 10 * mm))
+    story.append(Paragraph(L("gen_by", lang), s["ftr"]))
+
+    tl = L("ent", lang)
+    doc.build(story, onFirstPage=lambda c, d: _hf(c, d, rd, lang, tl), onLaterPages=lambda c, d: _hf(c, d, rd, lang, tl))
+    return out
+
+# ============================================================
 #  ENTRY POINT
 # ============================================================
 def generate_report(rd, out, tier="pro", lang="en"):
-    if tier in ("business", "enterprise"):
+    if tier == "enterprise":
+        return generate_enterprise_report(rd, out, lang)
+    elif tier == "business":
         return generate_business_report(rd, out, lang)
     return generate_pro_report(rd, out, lang)
