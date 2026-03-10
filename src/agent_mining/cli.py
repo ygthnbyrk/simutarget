@@ -21,6 +21,67 @@ import os
 import sys
 
 
+def cmd_generate_all(args):
+    """500K toplu üretim — tüm segmentler sırayla."""
+    from .factory import PersonaFactory
+    from .demographics import PRODUCTION_TARGETS
+
+    print("\n🌍 500K TOPLU PERSONA ÜRETİMİ")
+    print("=" * 45)
+    for seg, count in PRODUCTION_TARGETS.items():
+        print(f"  {seg:6} → {count:,} persona")
+    print(f"  {'TOPLAM':6} → {sum(PRODUCTION_TARGETS.values()):,} persona")
+    print("=" * 45)
+
+    if args.dry_run:
+        print("\n(--dry-run: sadece ilk 3 persona gösterilecek, DB'ye kaydedilmeyecek)\n")
+        for seg, count in PRODUCTION_TARGETS.items():
+            factory = PersonaFactory(segment=seg, seed=42)
+            print(f"--- {seg} segmenti örnek ---")
+            for p in factory.generate_batch(3):
+                print(f"  {p.name} | {p.age}y | {p.city} | {p.income_level}")
+            print()
+        return
+
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        print("❌ DATABASE_URL tanımlı değil.")
+        sys.exit(1)
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from .models import Base
+
+    engine = create_engine(db_url)
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+
+    grand_total = 0
+    import time
+    start_all = time.time()
+
+    for seg, count in PRODUCTION_TARGETS.items():
+        print(f"\n▶ {seg} segmenti — {count:,} persona üretiliyor...")
+        session = Session()
+        factory = PersonaFactory(segment=seg)
+
+        def progress(i, total, s=seg):
+            print(f"  [{s}] {i:,}/{total:,}")
+
+        personas = factory.generate_batch(count, progress_cb=progress)
+        saved = factory.save_to_db(personas, session)
+        session.close()
+        grand_total += saved
+        print(f"  ✅ {seg}: {saved:,} persona kaydedildi")
+
+    elapsed = time.time() - start_all
+    print(f"\n{'=' * 45}")
+    print(f"  🎉 TAMAMLANDI")
+    print(f"  Toplam üretilen: {grand_total:,} persona")
+    print(f"  Toplam süre: {elapsed:.1f}s ({elapsed/60:.1f} dakika)")
+    print(f"{'=' * 45}\n")
+
+
 def cmd_generate(args):
     """Persona üretim komutu."""
     from .factory import PersonaFactory
@@ -156,18 +217,22 @@ def main():
     subparsers = parser.add_subparsers(dest="command")
 
     # generate
-    gen = subparsers.add_parser("generate", help="Persona üret")
-    gen.add_argument("--segment", choices=["TR", "GLOBAL"], default="TR")
+    gen = subparsers.add_parser("generate", help="Tek segment persona üret")
+    gen.add_argument("--segment", choices=["TR", "EU", "USA", "MENA"], default="TR")
     gen.add_argument("--count", type=int, default=1000)
     gen.add_argument("--dry-run", action="store_true", help="DB'ye kaydetme")
 
+    # generate-all (500K toplu üretim)
+    gen_all = subparsers.add_parser("generate-all", help="500K toplu üretim (tüm segmentler)")
+    gen_all.add_argument("--dry-run", action="store_true")
+
     # run-campaigns
     run = subparsers.add_parser("run-campaigns", help="Referans kampanyaları çalıştır")
-    run.add_argument("--segment", choices=["TR", "GLOBAL"], default="TR")
+    run.add_argument("--segment", choices=["TR", "EU", "USA", "MENA"], default="TR")
     run.add_argument("--persona-count", type=int, default=100)
     run.add_argument("--model", default="gpt-4o-mini")
     run.add_argument("--concurrency", type=int, default=10)
-    run.add_argument("--yes", "-y", action="store_true", help="Onay sormadan çalıştır")
+    run.add_argument("--yes", "-y", action="store_true")
 
     # estimate
     est = subparsers.add_parser("estimate", help="Maliyet tahmini")
@@ -178,6 +243,8 @@ def main():
 
     if args.command == "generate":
         cmd_generate(args)
+    elif args.command == "generate-all":
+        cmd_generate_all(args)
     elif args.command == "run-campaigns":
         cmd_run_campaigns(args)
     elif args.command == "estimate":

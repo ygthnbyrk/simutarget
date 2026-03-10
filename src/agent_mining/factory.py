@@ -83,7 +83,7 @@ class PersonaFactory:
             seed: Reproducibility için random seed (opsiyonel)
         """
         if segment not in SEGMENT_MAP:
-            raise ValueError(f"Geçersiz segment: {segment}. 'TR' veya 'GLOBAL' olmalı.")
+            raise ValueError(f"Geçersiz segment: {segment}. 'TR', 'EU', 'USA' veya 'MENA' olmalı.")
 
         self.segment = segment
         self.dist: SegmentDistributions = SEGMENT_MAP[segment]
@@ -114,6 +114,7 @@ class PersonaFactory:
                 first = random.choice(TR_FEMALE_NAMES)
             last = random.choice(TR_SURNAMES)
         else:
+            # EU, USA, MENA hepsi global isim havuzu kullanır
             if gender in ("Male",):
                 first = random.choice(GLOBAL_MALE_NAMES)
             else:
@@ -187,11 +188,14 @@ class PersonaFactory:
         return persona
 
     def _fallback_city(self) -> str:
-        """'Diğer' kategorisi için küçük şehir fallback."""
-        tr_small = ["Bolu", "Kastamonu", "Sinop", "Bartın", "Karabük", "Kırıkkale"]
-        global_small = ["Denver, USA", "Portland, USA", "Glasgow, UK", "Lyon, France"]
-        pool = tr_small if self.segment == "TR" else global_small
-        return random.choice(pool)
+        """'Diğer' / 'Other' kategorisi için küçük şehir fallback."""
+        fallbacks = {
+            "TR": ["Bolu", "Kastamonu", "Sinop", "Bartın", "Karabük", "Kırıkkale"],
+            "EU": ["Lyon, France", "Leipzig, Germany", "Valencia, Spain", "Turin, Italy", "Gdansk, Poland"],
+            "USA": ["Denver, CO", "Portland, OR", "Austin, TX", "Raleigh, NC", "Salt Lake City, UT"],
+            "MENA": ["Sharjah, UAE", "Al Ain, UAE", "Luxor, Egypt", "Aswan, Egypt"],
+        }
+        return random.choice(fallbacks.get(self.segment, ["Unknown City"]))
 
     def generate_batch(self, count: int, progress_cb=None) -> list[Persona]:
         """
