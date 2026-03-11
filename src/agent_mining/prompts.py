@@ -35,7 +35,7 @@ KURALLAR:
 - Yanıtların tamamen bu karaktere özgü olsun.
 - Kendi kişiliğini, değerlerini ve maddi durumunu yansıt.
 - Abartmadan, gerçekçi bir tüketici gibi düşün.
-- Yanıtını SADECE istenen formatta ver, başka bir şey ekleme."""
+- Yanıtını SADECE istenen JSON formatında ver, başka bir şey ekleme."""
 
 TR_USER_PROMPT = """Sana bir ürün/reklam tanıtımı gösterilecek. Kendi karakterine göre dürüstçe değerlendir.
 
@@ -44,12 +44,10 @@ TR_USER_PROMPT = """Sana bir ürün/reklam tanıtımı gösterilecek. Kendi kara
 
 Bu ürünü satın alır mısın?
 
-Yanıtını SADECE şu JSON formatında ver (başka hiçbir şey yazma):
-{{
-  "karar": "EVET" veya "HAYIR",
-  "guven": 1-10 arası tam sayı,
-  "gerekcee": "1-2 cümle, kendi karakterine uygun düşünce"
-}}"""
+Yanıtını SADECE aşağıdaki JSON formatında ver. Örnek format:
+{{"karar": "EVET", "guven": 7, "gerekce": "Fiyatı uygun ve ihtiyacım var."}}
+
+"karar" alanına yalnızca EVET veya HAYIR yaz. Başka metin ekleme."""
 
 
 # ---------------------------------------------------------------------------
@@ -91,12 +89,10 @@ PRODUCT / AD:
 
 Would you buy this product?
 
-Reply ONLY in this exact JSON format (nothing else):
-{{
-  "decision": "YES" or "NO",
-  "confidence": integer 1-10,
-  "reasoning": "1-2 sentences reflecting your character's thinking"
-}}"""
+Reply ONLY in this exact JSON format. Example:
+{{"decision": "YES", "confidence": 7, "reasoning": "Good value for money and I need it."}}
+
+Use only YES or NO for the "decision" field. Nothing else."""
 
 
 # ---------------------------------------------------------------------------
@@ -106,14 +102,6 @@ Reply ONLY in this exact JSON format (nothing else):
 def build_prompts(persona_dict: dict, campaign_content: str, language: str = "tr") -> tuple[str, str]:
     """
     Persona dict ve kampanya içeriğinden sistem + kullanıcı prompt'u üretir.
-
-    Args:
-        persona_dict: Persona.to_prompt_dict() çıktısı
-        campaign_content: Reklam/ürün metni
-        language: "tr" veya "en"
-
-    Returns:
-        (system_prompt, user_prompt) tuple
     """
     if language == "tr":
         system = TR_SYSTEM_PROMPT.format(**persona_dict)
@@ -126,21 +114,21 @@ def build_prompts(persona_dict: dict, campaign_content: str, language: str = "tr
 
 
 def parse_tr_response(raw: str) -> dict:
-    """TR yanıtını parse eder. Hatalı JSON'ı düzeltmeye çalışır."""
+    """TR yanıtını parse eder."""
     import json, re
 
-    # JSON bloğunu ayıkla
     match = re.search(r'\{.*?\}', raw, re.DOTALL)
     if not match:
         raise ValueError(f"JSON bulunamadı: {raw[:200]}")
 
     data = json.loads(match.group())
 
+    karar = data.get("karar", "").strip().upper()
     return {
-        "decision": "BUY" if data.get("karar", "").upper() == "EVET" else "NO_BUY",
+        "decision": "BUY" if karar == "EVET" else "NO_BUY",
         "confidence": int(data.get("guven", 5)),
-        "reasoning": data.get("gerekcee", ""),
-        "raw_decision": data.get("karar", ""),
+        "reasoning": data.get("gerekce", data.get("gerekcee", data.get("gerekçe", ""))),
+        "raw_decision": karar,
     }
 
 
@@ -154,9 +142,10 @@ def parse_global_response(raw: str) -> dict:
 
     data = json.loads(match.group())
 
+    decision = data.get("decision", "").strip().upper()
     return {
-        "decision": "BUY" if data.get("decision", "").upper() == "YES" else "NO_BUY",
+        "decision": "BUY" if decision == "YES" else "NO_BUY",
         "confidence": int(data.get("confidence", 5)),
         "reasoning": data.get("reasoning", ""),
-        "raw_decision": data.get("decision", ""),
+        "raw_decision": decision,
     }

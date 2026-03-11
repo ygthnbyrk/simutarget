@@ -96,9 +96,9 @@ class Persona(Base):
     def to_prompt_dict(self) -> dict:
         """Prompt template'e beslenecek dict döner."""
         sensitivity_label = (
-            "yüksek" if self.price_sensitivity > 0.7
-            else "orta" if self.price_sensitivity > 0.4
-            else "düşük"
+            "çok yüksek — fiyat en önemli kriter, pahalı ürün almaz" if self.price_sensitivity > 0.7
+            else "orta — fiyat önemli ama kalite de gözetir" if self.price_sensitivity > 0.4
+            else "düşük — fiyata duyarsız, kalite ve marka öncelikli"
         )
         return {
             "name": self.name,
