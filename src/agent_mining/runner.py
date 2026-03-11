@@ -144,7 +144,7 @@ class CampaignRunner:
         self,
         openai_api_key: str,
         model: str = "gpt-4o-mini",
-        max_concurrent: int = 10,
+        max_concurrent: int = 8,
         session=None,
     ):
         self.client = openai.AsyncOpenAI(api_key=openai_api_key)
@@ -185,16 +185,29 @@ class CampaignRunner:
 
         async with self._semaphore:
             try:
-                response = await self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    temperature=0.7,
-                    max_tokens=150,
-                    response_format={"type": "json_object"},
-                )
+                # Rate limit retry — max 5 deneme, exponential backoff
+                response = None
+                for attempt in range(5):
+                    try:
+                        response = await self.client.chat.completions.create(
+                            model=self.model,
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": user_prompt},
+                            ],
+                            temperature=0.7,
+                            max_tokens=150,
+                            response_format={"type": "json_object"},
+                        )
+                        break
+                    except Exception as retry_err:
+                        if "rate_limit" in str(retry_err).lower() or "429" in str(retry_err):
+                            wait_time = (2 ** attempt) * 0.5  # 0.5s, 1s, 2s, 4s, 8s
+                            await asyncio.sleep(wait_time)
+                            if attempt == 4:
+                                raise
+                        else:
+                            raise
 
                 raw = response.choices[0].message.content
                 usage = response.usage
@@ -347,7 +360,7 @@ def run_campaign_sync(
     personas: list[Persona],
     api_key: str,
     model: str = "gpt-4o-mini",
-    max_concurrent: int = 10,
+    max_concurrent: int = 8,
     session=None,
 ) -> list[AgentDecision]:
     """asyncio event loop olmayan ortamlar için sync wrapper."""
