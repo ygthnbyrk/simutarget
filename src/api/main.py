@@ -2,7 +2,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from .routes import personas, campaigns, health, subscriptions
+from .routes import personas, campaigns, health, subscriptions, agent_mining
 from src.database.connection import get_db
 from src.api.auth import (
     UserRegister, UserLogin, TokenResponse, UserProfile,
@@ -35,6 +35,7 @@ app.include_router(health.router, tags=["Health"])
 app.include_router(personas.router, prefix="/api/v1/personas", tags=["Personas"])
 app.include_router(campaigns.router, prefix="/api/v1/campaigns", tags=["Campaigns"])
 app.include_router(subscriptions.router, prefix="/api/v1/subscriptions", tags=["Subscriptions"])
+app.include_router(agent_mining.router, prefix="/api/v1/agent-mining", tags=["Agent Mining"])
 
 
 @app.get("/")
