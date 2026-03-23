@@ -1298,7 +1298,10 @@ async def download_campaign_pdf(
     from src.services.pdf_report import generate_report
 
     tier = plan_slug  # pro, business, enterprise
-    safe_name = "".join(c if c.isalnum() or c in "-_ " else "" for c in campaign.name)[:50]
+    # Türkçe karakterleri ASCII'ye çevir, sonra alfanumerik filtrele
+    _tr_map = str.maketrans("şŞğĞüÜöÖçÇıİ", "sSgGuUoOcCiI")
+    ascii_name = campaign.name.translate(_tr_map)
+    safe_name = "".join(c if c.isascii() and (c.isalnum() or c in "-_ ") else "" for c in ascii_name)[:50]
     filename = f"SimuTarget_{safe_name}_{campaign.id}.pdf"
 
     # Geçici dosyaya yaz
