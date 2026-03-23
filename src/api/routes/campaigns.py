@@ -75,7 +75,7 @@ class AMPersonaAdapter:
     def __init__(self, am: AMPersona):
         self._am = am
         # Doğrudan erişilen alanlar
-        self.id          = am.id
+        self.id          = str(am.id)
         self.name        = am.name
         self.age         = am.age
         self.gender      = am.gender          # string, prompts _t() ile handle eder
