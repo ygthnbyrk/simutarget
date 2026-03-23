@@ -36,6 +36,92 @@ import random as _random
 
 router = APIRouter()
 
+
+# ============================================
+# AM PERSONA ADAPTER
+# prompts.py / openai_client.py factory Persona'sı
+# bekliyor — AMPersona'yı bu interface'e saran wrapper.
+# ============================================
+
+class _Personality:
+    def __init__(self, p): 
+        self.openness = p.openness
+        self.conscientiousness = p.conscientiousness
+        self.extraversion = p.extraversion
+        self.agreeableness = p.agreeableness
+        self.neuroticism = p.neuroticism
+
+class _PersonalValues:
+    family_oriented = False
+    environmentalist = False
+    animal_lover = False
+
+class _DigitalHabits:
+    primary_platform = "Instagram"
+    screen_time = "2-4 saat"
+    online_shopping_freq = "Ayda birkaç kez"
+    payment_preference = "Kredi Kartı"
+
+    def __init__(self, p):
+        freq = getattr(p, "online_shopping_freq", None)
+        if freq:
+            self.online_shopping_freq = freq
+
+class AMPersonaAdapter:
+    """
+    AMPersona → factory Persona interface adapter.
+    openai_client.py ve prompts.py'in beklediği attribute'ları sağlar.
+    """
+    def __init__(self, am: AMPersona):
+        self._am = am
+        # Doğrudan erişilen alanlar
+        self.id          = am.id
+        self.name        = am.name
+        self.age         = am.age
+        self.gender      = am.gender          # string, prompts _t() ile handle eder
+        self.city        = am.city
+        self.country     = am.country
+        self.income_level = am.income_level
+        self.education   = am.education
+        self.occupation  = am.occupation
+        self.marital_status = am.marital_status
+        self.region      = am.segment.value if hasattr(am.segment, 'value') else str(am.segment)
+
+        # Nested nesneler
+        self.personality     = _Personality(am)
+        self.personal_values = _PersonalValues()
+        self.digital_habits  = _DigitalHabits(am)
+
+        # Satın alma gücü: price_sensitivity ters çevrilir (düşük hassas = yüksek güç)
+        self.purchasing_power = 1.0 - am.price_sensitivity
+
+        # Factory'de olmayan alanlar — makul defaults
+        self.buying_style          = "Araştırmacı"
+        self.shopping_preference   = "Karma"
+        self.tech_adoption         = "Erken Çoğunluk"
+        self.social_media_influence = "Orta"
+        self.financial_behavior    = "Dengeli"
+        self.life_outlook          = "Gerçekçi"
+        self.religion              = "Belirtilmemiş"
+        self.political_view        = None
+        self.primary_anxiety       = None
+        self.secondary_anxiety     = None
+        self.children_count        = 0
+
+        # values/interests varsa buying_style ve diğerlerini zenginleştir
+        interests = am.interests or []
+        values    = am.values or []
+        if "teknoloji" in interests:
+            self.tech_adoption = "Erken Benimseyen"
+        if "tasarruf" in values or "ekonomi" in values:
+            self.buying_style = "Fırsat Avcısı"
+        if "marka" in values:
+            self.buying_style = "Marka Bağımlısı"
+        if am.price_sensitivity > 0.7:
+            self.buying_style = "Fırsat Avcısı"
+        elif am.price_sensitivity < 0.3:
+            self.buying_style = "Marka Bağımlısı"
+
 # ============================================
 # GÖRSEL UPLOAD AYARLARI
 # ============================================
@@ -353,7 +439,7 @@ def _get_personas_from_db(
     if len(personas) < count:
         personas = query.limit(count).all()
 
-    return personas
+    return [AMPersonaAdapter(p) for p in personas]
 
 
 # ============================================
