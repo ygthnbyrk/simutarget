@@ -317,6 +317,8 @@ def _build_persona_data(persona, lang: str = "tr") -> dict:
     """Persona verilerini dict olarak oluştur — her zaman ham değer kaydeder."""
     def _val(attr):
         return attr.value if hasattr(attr, 'value') else str(attr)
+    # Big Five: adapter'da personality nested, factory'de doğrudan attribute
+    p = getattr(persona, 'personality', persona)
     return {
         "name": persona.name,
         "age": persona.age,
@@ -327,6 +329,11 @@ def _build_persona_data(persona, lang: str = "tr") -> dict:
         "income_level": _val(persona.income_level),
         "education": _val(persona.education) if hasattr(persona, 'education') else None,
         "buying_style": _val(persona.buying_style) if hasattr(persona, 'buying_style') else None,
+        "openness":          round(getattr(p, 'openness', 0.5), 3),
+        "conscientiousness": round(getattr(p, 'conscientiousness', 0.5), 3),
+        "extraversion":      round(getattr(p, 'extraversion', 0.5), 3),
+        "agreeableness":     round(getattr(p, 'agreeableness', 0.5), 3),
+        "neuroticism":       round(getattr(p, 'neuroticism', 0.5), 3),
     }
 
 
@@ -1291,8 +1298,15 @@ async def download_campaign_pdf(
         options = content if isinstance(content, dict) else {}
         report_data["options"] = options
         report_data["campaign_content"] = "\n".join([f"{k}: {v[:100]}" for k, v in options.items()])
-        report_data["vote_distribution"] = summary.get("votes", {})
+        votes = summary.get("votes", {})
+        report_data["vote_distribution"] = votes
         report_data["avg_confidence"] = summary.get("avg_confidence", 0)
+        # PDF için onay oranı: en çok oy alan seçeneğin payı
+        total_votes = sum(votes.values()) if votes else 0
+        top_votes = max(votes.values()) if votes else 0
+        report_data["approval_rate"] = round((top_votes / total_votes * 100), 1) if total_votes > 0 else 0
+        report_data["yes_count"] = top_votes
+        report_data["no_count"] = total_votes - top_votes
 
     # PDF üret
     from src.services.pdf_report import generate_report
