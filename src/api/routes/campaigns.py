@@ -30,9 +30,9 @@ from src.database.models import (
 )
 from src.database.credit_service import CreditService, FeatureGateService
 from src.api.auth import get_current_user
-from src.personas.factory import PersonaFactory
-from src.personas.models import PersonaConfig, Region, PersonaFilters
 from src.inference.openai_client import SimuTargetLLM
+from src.agent_mining.models import Persona as AMPersona, SegmentType as AMSegmentType
+import random as _random
 
 router = APIRouter()
 
@@ -271,28 +271,89 @@ def _build_campaign_response(campaign: CampaignDB) -> CampaignResponse:
     )
 
 
-def _build_persona_filters(request_filters: Optional[PersonaFiltersRequest]) -> Optional[PersonaFilters]:
-    """Frontend filtre isteğini PersonaFilters modeline dönüştür."""
-    if not request_filters:
-        return None
+def _build_persona_filters(request_filters: Optional[PersonaFiltersRequest]):
+    """Geriye dönük uyumluluk için bırakıldı — artık _get_personas_from_db içinde kullanılıyor."""
+    return request_filters
 
-    # Boş mu kontrol et (tüm alanlar None ise filtre yok demektir)
-    data = request_filters.model_dump(exclude_none=True)
-    if not data:
-        return None
 
-    return PersonaFilters(
-        gender=request_filters.gender,
-        min_age=request_filters.min_age,
-        max_age=request_filters.max_age,
-        income_levels=request_filters.income_levels,
-        education_levels=request_filters.education_levels,
-        buying_styles=request_filters.buying_styles,
-        marital_statuses=request_filters.marital_statuses,
-        tech_adoptions=request_filters.tech_adoptions,
-        online_shopping_freqs=request_filters.online_shopping_freqs,
-        financial_behaviors=request_filters.financial_behaviors,
-    )
+# Region → SegmentType mapping
+_REGION_TO_SEGMENT = {
+    "TR":   AMSegmentType.TR,
+    "US":   AMSegmentType.USA,
+    "EU":   AMSegmentType.EU,
+    "MENA": AMSegmentType.MENA,
+}
+
+# Frontend gelir düzeyi etiketleri → DB sütun değerleri
+_INCOME_MAP = {
+    "Düşük":       "Düşük",
+    "Orta-Düşük":  "Orta-Düşük",
+    "Orta":        "Orta",
+    "Orta-Yüksek": "Orta-Yüksek",
+    "Yüksek":      "Yüksek",
+    "Low":         "Düşük",
+    "Lower-Mid":   "Orta-Düşük",
+    "Middle":      "Orta",
+    "Upper-Mid":   "Orta-Yüksek",
+    "High":        "Yüksek",
+}
+
+
+def _get_personas_from_db(
+    db: Session,
+    region: str,
+    count: int,
+    filters: Optional[PersonaFiltersRequest] = None,
+) -> list:
+    """
+    am_personas tablosundan filtreli persona çeker.
+    PersonaFactory'nin yerini alır — 500K pre-generated havuzundan rastgele seçer.
+    """
+    segment = _REGION_TO_SEGMENT.get(region, AMSegmentType.TR)
+    query = db.query(AMPersona).filter(AMPersona.segment == segment)
+
+    if filters:
+        # Cinsiyet
+        if filters.gender and filters.gender.lower() not in ("tümü", "all", ""):
+            query = query.filter(AMPersona.gender == filters.gender)
+
+        # Yaş aralığı
+        if filters.min_age:
+            query = query.filter(AMPersona.age >= filters.min_age)
+        if filters.max_age:
+            query = query.filter(AMPersona.age <= filters.max_age)
+
+        # Gelir düzeyi (çoklu seçim)
+        if filters.income_levels:
+            mapped = [_INCOME_MAP.get(lvl, lvl) for lvl in filters.income_levels]
+            query = query.filter(AMPersona.income_level.in_(mapped))
+
+        # Eğitim
+        if filters.education_levels:
+            query = query.filter(AMPersona.education.in_(filters.education_levels))
+
+        # Medeni durum
+        if filters.marital_statuses:
+            query = query.filter(AMPersona.marital_status.in_(filters.marital_statuses))
+
+    total_available = query.count()
+
+    # Filtre sonuç vermediyse segment geneline dön
+    if total_available == 0:
+        query = db.query(AMPersona).filter(AMPersona.segment == segment)
+        total_available = query.count()
+
+    if total_available == 0:
+        raise HTTPException(500, f"DB'de {region} segmentinde persona bulunamadı.")
+
+    # Rastgele offset ile her çalıştırmada farklı persona grubu
+    offset = _random.randint(0, max(0, total_available - count))
+    personas = query.offset(offset).limit(count).all()
+
+    if len(personas) < count:
+        personas = query.limit(count).all()
+
+    return personas
 
 
 # ============================================
@@ -525,13 +586,13 @@ async def test_campaign(
         raise HTTPException(402, reserve_result["message"])
 
     try:
-        # 4. Persona üret (filtreli)
-        config = PersonaConfig(
-            region=Region(region),
-            filters=_build_persona_filters(request.filters),
+        # 4. DB'den persona çek (am_personas havuzu — her seferinde farklı grup)
+        personas = _get_personas_from_db(
+            db=db,
+            region=region,
+            count=request.persona_count,
+            filters=request.filters,
         )
-        factory = PersonaFactory(config)
-        personas = factory.generate_batch(request.persona_count)
 
         # 5. LLM değerlendirmesi (PARALEL)
         llm = SimuTargetLLM()
@@ -676,13 +737,13 @@ async def compare_campaigns(
         raise HTTPException(402, reserve_result["message"])
 
     try:
-        # 4. Persona üret (filtreli)
-        config = PersonaConfig(
-            region=Region(region),
-            filters=_build_persona_filters(request.filters),
+        # 4. DB'den persona çek (am_personas havuzu — her seferinde farklı grup)
+        personas = _get_personas_from_db(
+            db=db,
+            region=region,
+            count=request.persona_count,
+            filters=request.filters,
         )
-        factory = PersonaFactory(config)
-        personas = factory.generate_batch(request.persona_count)
 
         # 5. LLM A/B karşılaştırma
         llm = SimuTargetLLM()
@@ -854,13 +915,13 @@ async def multi_compare_campaigns(
         raise HTTPException(402, reserve_result["message"])
 
     try:
-        # 5. Persona uret (filtreli)
-        config = PersonaConfig(
-            region=Region(region),
-            filters=_build_persona_filters(request.filters),
+        # 5. DB'den persona çek (am_personas havuzu — her seferinde farklı grup)
+        personas = _get_personas_from_db(
+            db=db,
+            region=region,
+            count=request.persona_count,
+            filters=request.filters,
         )
-        factory = PersonaFactory(config)
-        personas = factory.generate_batch(request.persona_count)
 
         # 6. LLM multi karsilastirma
         llm = SimuTargetLLM()
