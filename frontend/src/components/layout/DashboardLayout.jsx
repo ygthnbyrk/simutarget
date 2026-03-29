@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { Home, TestTube, Swords, LayoutGrid, History, User, LogOut, CreditCard, Menu, X, ChevronLeft } from 'lucide-react'
 import useAuthStore from '../../stores/authStore'
 import useCreditStore from '../../stores/creditStore'
-import LanguageSwitcher from '../common/LanguageSwitcher'
 import logoNavbar from '../../assets/simutarget-logo-navbar.png'
 
 
@@ -41,7 +40,6 @@ function DashboardLayout({ children }) {
           <img src={logoNavbar} alt="SimuTarget" style={{ height: '34px', width: 'auto' }} />
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <LanguageSwitcher compact />
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ padding: '8px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
             {mobileMenuOpen ? <X style={{ width: '24px', height: '24px' }} /> : <Menu style={{ width: '24px', height: '24px' }} />}
           </button>
@@ -63,19 +61,6 @@ function DashboardLayout({ children }) {
             <ChevronLeft style={{ width: '20px', height: '20px', transform: sidebarOpen ? 'none' : 'rotate(180deg)', transition: 'transform 0.3s' }} />
           </button>
         </div>
-
-        {/* Language Switcher in sidebar */}
-        {sidebarOpen && (
-          <div style={{ padding: '16px 16px 8px 16px' }}>
-            <LanguageSwitcher />
-          </div>
-        )}
-        {!sidebarOpen && (
-          <div style={{ padding: '12px 0', display: 'flex', justifyContent: 'center' }}>
-            <LanguageSwitcher compact />
-          </div>
-        )}
-
         {/* Navigation */}
         <nav style={{ flex: 1, padding: '12px 12px', display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto' }}>
           {navItems.map((item) => {

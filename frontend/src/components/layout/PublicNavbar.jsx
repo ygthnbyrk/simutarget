@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import LanguageSwitcher from '../common/LanguageSwitcher'
 import logoNavbar from '../../assets/simutarget-logo-navbar.png'
 
 function PublicNavbar() {
@@ -35,7 +34,6 @@ function PublicNavbar() {
 
           {/* Desktop Auth Buttons + Language */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} className="hidden-mobile">
-            <LanguageSwitcher />
             <Link to="/login" className="btn btn-ghost" style={{ padding: '10px 18px' }}>{t('nav.login')}</Link>
             <Link to="/register" className="btn btn-primary" style={{ padding: '10px 20px' }}>{t('nav.getStarted')}</Link>
           </div>
@@ -58,9 +56,7 @@ function PublicNavbar() {
                 {link.name}
               </a>
             ))}
-            <div style={{ padding: '16px 0 8px 0' }}>
-              <LanguageSwitcher />
-            </div>
+            
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px', paddingTop: '20px', borderTop: '1px solid var(--color-border)' }}>
               <Link to="/login" onClick={() => setIsMenuOpen(false)} className="btn btn-secondary" style={{ width: '100%', padding: '14px', justifyContent: 'center' }}>{t('nav.login')}</Link>
               <Link to="/register" onClick={() => setIsMenuOpen(false)} className="btn btn-primary" style={{ width: '100%', padding: '14px', justifyContent: 'center' }}>{t('nav.getStarted')}</Link>
