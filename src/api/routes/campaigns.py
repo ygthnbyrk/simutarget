@@ -31,7 +31,14 @@ from src.database.models import (
 from src.database.credit_service import CreditService, FeatureGateService
 from src.api.auth import get_current_user
 from src.inference.openai_client import SimuTargetLLM
-from src.agent_mining.models import Persona as AMPersona, SegmentType as AMSegmentType
+from src.agent_mining.models import (
+    Persona as AMPersona,
+    SegmentType as AMSegmentType,
+    AgentDecision as AMAgentDecision,
+    DecisionType as AMDecisionType,
+    ReferenceCampaign as AMReferenceCampaign,
+    CampaignStatus as AMCampaignStatus,
+)
 import random as _random
 
 router = APIRouter()
@@ -486,6 +493,69 @@ def _check_image_feature_gate(user: User, db: Session):
 
 
 # ============================================
+# AGENT MINING FLYWHEEL
+# ============================================
+
+def _save_to_agent_mining(
+    db: Session,
+    campaign: CampaignDB,
+    results: list,
+):
+    """
+    Kullanıcı kampanya testinin kararlarını agent mining tablolarına kaydeder.
+    Her kampanya testi otomatik olarak veri setini besler (flywheel).
+    Hata olsa bile ana test akışını bozmaz — try/except ile sarılı.
+    """
+    try:
+        buy_count = sum(1 for r in results if r.get("decision_bool"))
+        no_buy_count = len(results) - buy_count
+        content_text = (
+            campaign.content.get("text", "")
+            if isinstance(campaign.content, dict)
+            else str(campaign.content)
+        )[:500]
+
+        am_campaign_id = f"user_{campaign.id}_{uuid.uuid4().hex[:8]}"
+        am_campaign = AMReferenceCampaign(
+            id=am_campaign_id,
+            name=campaign.name,
+            content=content_text,
+            category="User Campaign",
+            product_name=campaign.name,
+            price_tl=None,
+            price_usd=None,
+            status=AMCampaignStatus.COMPLETED,
+            total_personas_run=len(results),
+            buy_count=buy_count,
+            no_buy_count=no_buy_count,
+            created_at=datetime.utcnow(),
+        )
+        db.add(am_campaign)
+        db.flush()
+
+        for r in results:
+            persona_id = r.get("persona_id")
+            if not persona_id:
+                continue
+            decision_type = (
+                AMDecisionType.BUY if r.get("decision_bool") else AMDecisionType.NO_BUY
+            )
+            am_decision = AMAgentDecision(
+                campaign_id=am_campaign_id,
+                persona_id=persona_id,
+                decision=decision_type,
+                confidence=r.get("confidence", 5),
+                reasoning=r.get("reasoning", ""),
+            )
+            db.add(am_decision)
+
+        db.flush()
+    except Exception:
+        # Sessizce yok say — ana akışı asla bozma
+        db.rollback()
+
+
+# ============================================
 # ENDPOINTS
 # ============================================
 
@@ -731,6 +801,9 @@ async def test_campaign(
                 "confidence": confidence,
                 "reasoning": reasoning,
                 "success": r.success,
+                # Agent Mining flywheel için
+                "persona_id": r.persona.id,
+                "decision_bool": bool(r.decision and r.decision.decision),
             })
 
         # Kampanya özetini güncelle
@@ -766,6 +839,10 @@ async def test_campaign(
             user_id=user.id, amount=required_credits, reference_id=reference_id,
         )
 
+        db.commit()
+
+        # 8. Agent Mining flywheel — kararları veri setine ekle
+        _save_to_agent_mining(db, campaign, results_data)
         db.commit()
 
         return TestResultResponse(
