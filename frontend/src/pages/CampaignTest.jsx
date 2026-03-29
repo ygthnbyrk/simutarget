@@ -30,10 +30,10 @@ function CampaignTest() {
   const canUploadImage = ['pro', 'business', 'enterprise'].includes(planSlug)
 
   const regions = [
-    { code: 'TR', name: t('common.turkey'), flag: '🇹🇷' },
-    { code: 'US', name: t('common.usa'), flag: '🇺🇸' },
-    { code: 'EU', name: t('common.europe'), flag: '🇪🇺' },
-    { code: 'MENA', name: t('common.mena'), flag: '🌍' },
+    { code: 'TR', name: t('common.turkey') },
+    { code: 'US', name: t('common.usa') },
+    { code: 'EU', name: t('common.europe') },
+    { code: 'MENA', name: t('common.mena') },
   ]
 
   const handleChange = (e) => {
@@ -335,7 +335,7 @@ function CampaignTest() {
                 {regions.map((r) => (
                   <button key={r.code} type="button" onClick={() => setFormData({ ...formData, region: r.code })}
                     style={{ padding: '20px', borderRadius: '12px', border: formData.region === r.code ? '2px solid var(--color-accent-cyan)' : '1px solid var(--color-border)', background: formData.region === r.code ? 'rgba(6, 182, 212, 0.1)' : 'var(--color-bg-secondary)', cursor: 'pointer', textAlign: 'center' }}>
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>{r.flag}</div>
+                    <div style={{ fontSize: '22px', fontWeight: '700', marginBottom: '8px', color: formData.region === r.code ? 'var(--color-accent-cyan)' : 'var(--color-text-primary)' }}>{r.code}</div>
                     <div style={{ fontSize: '14px', fontWeight: '500' }}>{r.name}</div>
                   </button>
                 ))}

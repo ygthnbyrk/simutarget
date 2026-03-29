@@ -81,10 +81,10 @@ function ABCompare() {
   const fileInputRefB = useRef(null)
 
   const regions = [
-    { code: 'TR', name: t('common.turkey'), flag: '🇹🇷' },
-    { code: 'US', name: t('common.usa'), flag: '🇺🇸' },
-    { code: 'EU', name: t('common.europe'), flag: '🇪🇺' },
-    { code: 'MENA', name: t('common.mena'), flag: '🌍' },
+    { code: 'TR', name: t('common.turkey') },
+    { code: 'US', name: t('common.usa') },
+    { code: 'EU', name: t('common.europe') },
+    { code: 'MENA', name: t('common.mena') },
   ]
 
   // Image handlers
@@ -220,7 +220,7 @@ function ABCompare() {
               {/* Campaign A */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '8px', background: 'var(--color-accent-cyan)', color: '#000', fontSize: '13px', fontWeight: '700' }}>A</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '8px', background: 'var(--color-accent-cyan)', color: '#0a0e1a', fontSize: '13px', fontWeight: '700' }}>A</span>
                   <label style={{ fontSize: '14px', fontWeight: '600' }}>Campaign A *</label>
                 </div>
                 <textarea value={contentA} onChange={(e) => setContentA(e.target.value)} className="input" style={{ minHeight: '150px', resize: 'vertical' }} placeholder={t("abCompare.campaignAPlaceholder")} required={!imageFileA} />
@@ -267,7 +267,7 @@ function ABCompare() {
                 {regions.map((r) => (
                   <button key={r.code} type="button" onClick={() => setRegion(r.code)}
                     style={{ padding: '20px', borderRadius: '12px', border: region === r.code ? '2px solid var(--color-accent-cyan)' : '1px solid var(--color-border)', background: region === r.code ? 'rgba(6, 182, 212, 0.1)' : 'var(--color-bg-secondary)', cursor: 'pointer', textAlign: 'center' }}>
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>{r.flag}</div>
+                    <div style={{ fontSize: '22px', fontWeight: '700', marginBottom: '8px', color: region === r.code ? 'var(--color-accent-cyan)' : 'var(--color-text-primary)' }}>{r.code}</div>
                     <div style={{ fontSize: '14px', fontWeight: '500' }}>{r.name}</div>
                   </button>
                 ))}
