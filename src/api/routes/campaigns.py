@@ -102,32 +102,75 @@ class AMPersonaAdapter:
         # Satın alma gücü: price_sensitivity ters çevrilir (düşük hassas = yüksek güç)
         self.purchasing_power = 1.0 - am.price_sensitivity
 
-        # Factory'de olmayan alanlar — makul defaults
-        self.buying_style          = "Araştırmacı"
-        self.shopping_preference   = "Karma"
-        self.tech_adoption         = "Erken Çoğunluk"
-        self.social_media_influence = "Orta"
-        self.financial_behavior    = "Dengeli"
-        self.life_outlook          = "Gerçekçi"
-        self.religion              = "Belirtilmemiş"
-        self.political_view        = None
-        self.primary_anxiety       = None
-        self.secondary_anxiety     = None
-        self.children_count        = 0
+        # Big Five shorthand
+        ps = am.price_sensitivity; op = am.openness; co = am.conscientiousness
+        ex = am.extraversion; ag = am.agreeableness; ne = am.neuroticism
+        interests = am.interests or []; values = am.values or []
+        inc_map = {"Düşük":1,"Orta-Düşük":2,"Orta":3,"Orta-Yüksek":4,"Yüksek":5,
+                   "Low":1,"Lower-Mid":2,"Middle":3,"Upper-Mid":4,"High":5}
+        inc_n = inc_map.get(am.income_level, 3)
 
-        # values/interests varsa buying_style ve diğerlerini zenginleştir
-        interests = am.interests or []
-        values    = am.values or []
-        if "teknoloji" in interests:
-            self.tech_adoption = "Erken Benimseyen"
-        if "tasarruf" in values or "ekonomi" in values:
-            self.buying_style = "Fırsat Avcısı"
-        if "marka" in values:
-            self.buying_style = "Marka Bağımlısı"
-        if am.price_sensitivity > 0.7:
-            self.buying_style = "Fırsat Avcısı"
-        elif am.price_sensitivity < 0.3:
-            self.buying_style = "Marka Bağımlısı"
+        # Buying style
+        if "marka" in values and ps < 0.4: self.buying_style = "Marka Bağımlısı"
+        elif "tasarruf" in values and ps > 0.5: self.buying_style = "Fırsat Avcısı"
+        elif ps > 0.72: self.buying_style = "Fırsat Avcısı"
+        elif ps < 0.25: self.buying_style = "Marka Bağımlısı"
+        elif co > 0.65: self.buying_style = "Planlı Alıcı"
+        elif ex > 0.65 and ne > 0.55: self.buying_style = "Anlık Alıcı"
+        else: self.buying_style = "Araştırmacı"
+
+        # Tech adoption
+        if "teknoloji" in interests: self.tech_adoption = "Erken Benimseyen"
+        elif op > 0.75 and am.age < 35: self.tech_adoption = "Yenilikçi"
+        elif op > 0.6: self.tech_adoption = "Erken Benimseyen"
+        elif op > 0.45: self.tech_adoption = "Erken Çoğunluk"
+        elif op > 0.3: self.tech_adoption = "Geç Çoğunluk"
+        else: self.tech_adoption = "Gelenekçi"
+
+        # Shopping preference
+        freq = getattr(am, "online_shopping_freq", "") or ""
+        if "haftal" in freq.lower() or "her gün" in freq.lower(): self.shopping_preference = "Online"
+        elif "nadir" in freq.lower(): self.shopping_preference = "Mağaza"
+        else: self.shopping_preference = "Karma"
+
+        # Social media influence
+        if ex > 0.7 and am.age < 40: self.social_media_influence = "Çok Yüksek"
+        elif ex > 0.55: self.social_media_influence = "Yüksek"
+        elif ex > 0.35: self.social_media_influence = "Orta"
+        else: self.social_media_influence = "Çok Düşük"
+
+        # Financial behavior
+        if co > 0.65 and ps > 0.55: self.financial_behavior = "Tasarruflu"
+        elif inc_n >= 4 and co < 0.45: self.financial_behavior = "Harcamacı"
+        elif inc_n >= 4 and op > 0.6: self.financial_behavior = "Yatırımcı"
+        else: self.financial_behavior = "Dengeli"
+
+        # Life outlook
+        if ne < 0.3 and ag > 0.6: self.life_outlook = "İyimser"
+        elif ne > 0.65: self.life_outlook = "Kötümser"
+        elif op > 0.6 and ne < 0.5: self.life_outlook = "İdealist"
+        else: self.life_outlook = "Gerçekçi"
+
+        # Political view — opinion/politik sorularda çeşitlilik için kritik
+        if op > 0.7 and am.age < 45: self.political_view = "Merkez Sol"
+        elif op < 0.35 and am.age > 45: self.political_view = "Merkez Sağ"
+        elif inc_n >= 4 and co > 0.6: self.political_view = "Merkez Sağ"
+        elif op > 0.55: self.political_view = "Merkez"
+        else: self.political_view = "Merkez"
+
+        # Religion
+        if am.country in ("Türkiye","Turkey","TR"): self.religion = "İslam"
+        elif am.country in ("Germany","Almanya","France","Fransa"): self.religion = "Hristiyan"
+        else: self.religion = "Belirtilmemiş"
+
+        # Personal values
+        if "aile" in values: self.personal_values.family_oriented = True
+        if "çevre" in values or "doğa" in values: self.personal_values.environmentalist = True
+        if "hayvan" in values: self.personal_values.animal_lover = True
+
+        # Children
+        self.children_count = (1 if am.age < 40 else 2) if (am.marital_status == "Evli" and am.age > 28) else 0
+        self.primary_anxiety = None; self.secondary_anxiety = None
 
 # ============================================
 # GÖRSEL UPLOAD AYARLARI
@@ -766,7 +809,7 @@ async def test_campaign(
             personas=personas,
             campaign_content=campaign_text,
             campaign_id=str(campaign_id),
-            max_concurrent=10,
+            max_concurrent=25,
             verbose=False,
             lang=request.lang,
             image_base64=image_base64,
@@ -931,7 +974,7 @@ async def compare_campaigns(
 
         # PARALEL A/B karşılaştırma
         import asyncio
-        semaphore = asyncio.Semaphore(10)
+        semaphore = asyncio.Semaphore(25)
 
         async def compare_one(persona):
             async with semaphore:
@@ -972,12 +1015,14 @@ async def compare_campaigns(
                 "persona_gender": persona.gender.value if hasattr(persona.gender, 'value') else str(persona.gender),
                 "persona_city": persona.city,
                 "persona_occupation": persona.occupation,
+                "decision": comparison.choice,
                 "choice": comparison.choice,
                 "confidence": comparison.confidence,
                 "reasoning": comparison.reasoning,
                 "a_score": comparison.option_scores.get("A", 0),
                 "b_score": comparison.option_scores.get("B", 0),
                 "influencing_factors": comparison.influencing_factors,
+                "persona_data": _build_persona_data(persona),
             })
 
         # Kampanya özetini güncelle
@@ -1109,7 +1154,7 @@ async def multi_compare_campaigns(
 
         # PARALEL Multi karşılaştırma
         import asyncio
-        semaphore = asyncio.Semaphore(10)
+        semaphore = asyncio.Semaphore(25)
 
         async def multi_compare_one(persona):
             async with semaphore:
@@ -1146,11 +1191,13 @@ async def multi_compare_campaigns(
                 "persona_gender": persona.gender.value if hasattr(persona.gender, 'value') else str(persona.gender),
                 "persona_city": persona.city,
                 "persona_occupation": persona.occupation,
+                "decision": comparison.choice,
                 "choice": comparison.choice,
                 "confidence": comparison.confidence,
                 "reasoning": comparison.reasoning,
                 "option_scores": comparison.option_scores,
                 "influencing_factors": comparison.influencing_factors,
+                "persona_data": _build_persona_data(persona),
             })
 
         # Kampanya ozetini guncelle
