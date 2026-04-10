@@ -558,13 +558,14 @@ def _save_to_agent_mining(
             else str(campaign.content)
         )[:500]
 
-        am_campaign_id = f"user_{campaign.id}_{uuid.uuid4().hex[:8]}"
+        import uuid as _uuid
+        am_campaign_id = _uuid.uuid4()
         am_campaign = AMReferenceCampaign(
             id=am_campaign_id,
-            name=campaign.name,
+            name=f"[User] {campaign.name}"[:200],
             content=content_text,
             category="User Campaign",
-            product_name=campaign.name,
+            product_name=campaign.name[:200],
             price_tl=None,
             price_usd=None,
             status=AMCampaignStatus.COMPLETED,
@@ -580,12 +581,17 @@ def _save_to_agent_mining(
             persona_id = r.get("persona_id")
             if not persona_id:
                 continue
+            try:
+                import uuid as _uuid2
+                persona_uuid = _uuid2.UUID(str(persona_id))
+            except (ValueError, AttributeError):
+                continue
             decision_type = (
                 AMDecisionType.BUY if r.get("decision_bool") else AMDecisionType.NO_BUY
             )
             am_decision = AMAgentDecision(
                 campaign_id=am_campaign_id,
-                persona_id=persona_id,
+                persona_id=persona_uuid,
                 decision=decision_type,
                 confidence=r.get("confidence", 5),
                 reasoning=r.get("reasoning", ""),
