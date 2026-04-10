@@ -563,10 +563,27 @@ def generate_business_report(rd, out, lang="en"):
     story.append(Spacer(1, 8 * mm))
 
     story.append(Paragraph(L("exec_summary", lang), s["sec"]))
-    em = [_mc(str(round(apr, 1)) + "%", L("approval", lang), GREEN if apr >= 50 else RED),
-          _mc(str(round(ac, 1)) + "/10", L("avgconf", lang), PURPLE),
-          _mc(str(rd.get("total_personas", 0)), L("total", lang), CYAN),
-          _mc(str(rd.get("yes_count", 0)) + "/" + str(rd.get("no_count", 0)), L("yes", lang) + " / " + L("no", lang), AMBER)]
+    if tt == "single":
+        em = [_mc(str(round(apr, 1)) + "%", L("approval", lang), GREEN if apr >= 50 else RED),
+              _mc(str(round(ac, 1)) + "/10", L("avgconf", lang), PURPLE),
+              _mc(str(rd.get("total_personas", 0)), L("total", lang), CYAN),
+              _mc(str(rd.get("yes_count", 0)) + "/" + str(rd.get("no_count", 0)), L("yes", lang) + " / " + L("no", lang), AMBER)]
+    elif tt == "ab_compare":
+        av = rd.get("a_votes", 0); bv = rd.get("b_votes", 0); nv = rd.get("neither_votes", 0)
+        tot = av + bv + nv or 1
+        winner = "A" if av > bv else "B" if bv > av else "-"
+        em = [_mc(winner, L("winner", lang) if "winner" in (L("winner","en"),L("winner","tr")) else "Winner", CYAN),
+              _mc(str(round(av/tot*100)) + "%", "Option A", CYAN),
+              _mc(str(round(bv/tot*100)) + "%", "Option B", PURPLE),
+              _mc(str(round(ac, 1)) + "/10", L("avgconf", lang), AMBER)]
+    else:
+        vd = rd.get("vote_distribution", {}); tv = sum(vd.values()) or 1
+        winner = max(vd, key=vd.get) if vd else "-"
+        top_pct = str(round(vd.get(winner, 0) / tv * 100)) + "%" if vd else "0%"
+        em = [_mc(winner, "Winner", CYAN),
+              _mc(top_pct, "Top Vote Share", GREEN),
+              _mc(str(rd.get("total_personas", 0)), L("total", lang), PURPLE),
+              _mc(str(round(ac, 1)) + "/10", L("avgconf", lang), AMBER)]
     ecw = uw / 4
     story.append(Table([em], colWidths=[ecw]*4, style=TableStyle([("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),3),("RIGHTPADDING",(0,0),(-1,-1),3)])))
     story.append(Spacer(1, 5 * mm))
@@ -755,16 +772,41 @@ def generate_enterprise_report(rd, out, lang="en"):
     story.append(Paragraph(L("exec_summary", lang), s["sec"]))
 
     # 6 metrics in 2 rows
-    row1 = [
-        _mc(str(round(apr, 1)) + "%", L("approval", lang), GREEN if apr >= 50 else RED),
-        _mc(str(round(ac, 1)) + "/10", L("avgconf", lang), PURPLE),
-        _mc(str(n_personas), L("total", lang), CYAN),
-    ]
-    row2 = [
-        _mc(str(rd.get("yes_count", 0)), L("yes_v", lang), GREEN),
-        _mc(str(rd.get("no_count", 0)), L("no_v", lang), RED),
-        _mc(str(rd.get("yes_count", 0)) + "/" + str(rd.get("no_count", 0)), L("yes", lang) + " / " + L("no", lang), AMBER),
-    ]
+    if tt == "single":
+        row1 = [
+            _mc(str(round(apr, 1)) + "%", L("approval", lang), GREEN if apr >= 50 else RED),
+            _mc(str(round(ac, 1)) + "/10", L("avgconf", lang), PURPLE),
+            _mc(str(n_personas), L("total", lang), CYAN),
+        ]
+        row2 = [
+            _mc(str(rd.get("yes_count", 0)), L("yes_v", lang), GREEN),
+            _mc(str(rd.get("no_count", 0)), L("no_v", lang), RED),
+            _mc(str(rd.get("yes_count", 0)) + "/" + str(rd.get("no_count", 0)), L("yes", lang) + " / " + L("no", lang), AMBER),
+        ]
+    elif tt == "ab_compare":
+        av = rd.get("a_votes", 0); bv = rd.get("b_votes", 0); nv = rd.get("neither_votes", 0)
+        tot = av + bv + nv or 1; winner = "A" if av > bv else "B" if bv > av else "-"
+        row1 = [
+            _mc(winner, "Winner", CYAN),
+            _mc(str(round(av/tot*100)) + "%", "Option A", CYAN),
+            _mc(str(round(bv/tot*100)) + "%", "Option B", PURPLE),
+        ]
+        row2 = [
+            _mc(str(av), "A " + ("oy" if lang=="tr" else "votes"), CYAN),
+            _mc(str(bv), "B " + ("oy" if lang=="tr" else "votes"), PURPLE),
+            _mc(str(round(ac,1)) + "/10", L("avgconf", lang), AMBER),
+        ]
+    else:
+        vd = rd.get("vote_distribution", {}); tv = sum(vd.values()) or 1
+        winner = max(vd, key=vd.get) if vd else "-"
+        top_pct = str(round(vd.get(winner,0)/tv*100)) + "%" if vd else "0%"
+        row1 = [
+            _mc(winner, "Winner", CYAN),
+            _mc(top_pct, "Top Vote Share", GREEN),
+            _mc(str(n_personas), L("total", lang), PURPLE),
+        ]
+        row2 = [_mc(str(ct), _ss(lb,12), CC[i%len(CC)]) for i,(lb,ct) in enumerate(list(vd.items())[:3])]
+        if not row2: row2 = [_mc("-", "-", TL), _mc("-", "-", TL), _mc("-", "-", TL)]
     ecw = uw / 3
     story.append(Table([row1], colWidths=[ecw]*3, style=TableStyle([("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),3),("RIGHTPADDING",(0,0),(-1,-1),3)])))
     story.append(Spacer(1, 3 * mm))
