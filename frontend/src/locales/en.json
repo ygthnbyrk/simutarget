@@ -38,15 +38,12 @@
     "tryAgain": "Try Again",
     "actions": "Actions",
     "downloadPDF": "Download PDF"
-
   },
-
   "testTypes": {
     "single": "Single",
     "ab": "A/B",
     "multi": "Multi"
   },
-
   "nav": {
     "features": "Features",
     "howItWorks": "How It Works",
@@ -61,7 +58,6 @@
     "profile": "Profile",
     "logout": "Logout"
   },
-
   "landing": {
     "badge": "AI-Powered Market Research",
     "heroTitle1": "Test Your Campaigns",
@@ -110,7 +106,6 @@
     "ctaSubtitle": "Join thousands of marketers who validate their campaigns with AI before launch. Start free, no credit card required.",
     "getStartedFree": "Get Started Free"
   },
-
   "pricing": {
     "title1": "Simple, Transparent",
     "title2": "Pricing",
@@ -153,7 +148,6 @@
     "payAsYouGo": "Pay as you go",
     "disposableDesc": "Single test, no subscription needed"
   },
-
   "auth": {
     "welcomeBack": "Welcome back",
     "loginSubtitle": "Sign in to your account to continue",
@@ -179,7 +173,6 @@
     "passwordReqUpper": "One uppercase letter",
     "passwordReqNumber": "One number"
   },
-
   "dashboard": {
     "welcomeBack": "Welcome back",
     "onPlan": "You're on the {{plan}} plan",
@@ -233,7 +226,6 @@
     "proFeature": "Pro Feature",
     "runDifferentTypes": "Try different test types"
   },
-
   "campaignTest": {
     "title": "Campaign Test",
     "subtitle": "Test your campaign against AI-generated synthetic personas",
@@ -273,7 +265,6 @@
     "total": "Total",
     "yourBalance": "Your Balance"
   },
-
   "abCompare": {
     "title": "A/B Comparison",
     "subtitle": "Compare two campaign variants head-to-head to find the winner",
@@ -309,7 +300,6 @@
     "lockedDesc": "Compare two campaign variants head-to-head. Available on Pro plan and above.",
     "upgradeToPro": "Upgrade to Pro"
   },
-
   "multiCompare": {
     "title": "Multi Compare",
     "subtitle": "Compare 3-4 campaign variants to find the best performer",
@@ -345,7 +335,6 @@
     "votes": "votes",
     "winnerBadge": "WINNER"
   },
-
   "history": {
     "title": "Campaign History",
     "subtitle": "Review and manage your past campaign tests",
@@ -392,7 +381,6 @@
       "creditsUsed": "Credits Used"
     }
   },
-
   "detail": {
     "campaignContent": "Campaign Content",
     "campaignVariants": "Campaign Variants",
@@ -420,7 +408,6 @@
     "conf": "Conf.",
     "reasoning": "Reasoning"
   },
-
   "filters": {
     "title": "Persona Filters",
     "upgradeToProDesc": "Upgrade to Pro to target specific demographics",
@@ -475,7 +462,6 @@
     "finInvestor": "Investor",
     "finDebtUser": "Debt User"
   },
-
   "profile": {
     "title": "Profile & Subscription",
     "subtitle": "Manage your account settings and subscription plan",
@@ -502,7 +488,6 @@
     "confirmCancel": "Yes, Cancel",
     "plan": "Plan"
   },
-
   "footer": {
     "description": "AI-powered synthetic market research platform. Test campaigns before they go live.",
     "product": "Product",
@@ -522,7 +507,6 @@
     "refundPolicy": "Refund Policy",
     "allRightsReserved": "All rights reserved."
   },
-
   "about": {
     "title": "About Us",
     "subtitle": "Transforming market research with the power of artificial intelligence",
@@ -548,7 +532,6 @@
     "companyTitle": "Company Information",
     "companyText": "SimuTarget Inc. is incorporated in Delaware, USA. Our development and research operations are based in Turkey, combining global business standards with cutting-edge AI research capabilities."
   },
-
   "contact": {
     "title": "Contact Us",
     "subtitle": "Have questions or need help? We'd love to hear from you.",
@@ -578,7 +561,6 @@
     "sentDesc": "Thank you for reaching out. We'll get back to you within 24 hours.",
     "sendAnother": "Send Another Message"
   },
-
   "faq": {
     "title": "Frequently Asked Questions",
     "subtitle": "Find answers to the most common questions about SimuTarget.ai",
@@ -622,7 +604,6 @@
     "stillHaveQuestionsDesc": "Our support team is here to help you with anything you need.",
     "contactUs": "Contact Us"
   },
-
   "terms": {
     "title": "Terms & Conditions",
     "lastUpdated": "Last Updated",
@@ -654,7 +635,6 @@
     "contact_title": "Contact Information",
     "contact_text": "If you have any questions about these Terms and Conditions, please contact us at contact@simutarget.ai."
   },
-
   "privacy": {
     "title": "Privacy Policy",
     "lastUpdated": "Last Updated",
@@ -683,7 +663,6 @@
     "contact_title": "Contact Us",
     "contact_text": "If you have questions about this Privacy Policy, please contact us at contact@simutarget.ai."
   },
-
   "cookie": {
     "title": "Cookie Policy",
     "lastUpdated": "Last Updated",
@@ -705,28 +684,38 @@
     "contact_title": "Contact Us",
     "contact_text": "If you have questions about our use of cookies, please contact us at contact@simutarget.ai."
   },
-
   "refund": {
     "title": "Refund Policy",
     "lastUpdated": "Last Updated",
-    "guaranteeBadge": "30-Day Money-Back Guarantee",
-    "guaranteeDesc": "We stand behind our product. If you're not satisfied, we'll make it right.",
+    "guaranteeBadge": "Refunds Handled by Paddle",
+    "guaranteeDesc": "All purchases are processed by Paddle, our Merchant of Record. Refunds are governed by Paddle's official policy.",
     "overview_title": "Overview",
-    "overview_text": "At SimuTarget.ai, customer satisfaction is our top priority. We offer a 30-day money-back guarantee on all subscription plans. If you're not satisfied with our service within the first 30 days of your subscription, you can request a full refund.",
-    "eligible_title": "Eligible for Refund",
-    "eligible_text": "Refunds are granted in the following circumstances: if the platform experiences a technical malfunction that prevents you from using the service and cannot be resolved within a reasonable timeframe; if there is a significant discrepancy between the advertised features and the actual service provided; or if you request a refund within 30 days of your initial subscription purchase.",
-    "notEligible_title": "Not Eligible for Refund",
-    "notEligible_text": "Refunds may not be granted if: you have substantially used the credits included in your plan; you purchased during a promotional period with special pricing; you have repeatedly purchased and requested refunds; or you request a refund after 30 days from the purchase date. Disposable (single-use) plans are non-refundable once the test has been executed.",
-    "process_title": "Refund Process",
-    "process_text": "To request a refund, please contact our support team at contact@simutarget.ai with your account email, order reference, and reason for the refund. Please include as much detail as possible to help us process your request quickly.",
-    "timeline_title": "Refund Timeline",
-    "timeline_text": "We aim to process refund requests within 1-2 business days. Once approved, the refund will be credited to your original payment method within 5-10 business days, depending on your bank or card issuer.",
-    "contact_title": "Contact Us",
-    "contact_text": "For any questions about our refund policy or to submit a refund request, please contact us at contact@simutarget.ai. Our support team is available Monday through Friday, 9AM to 6PM (EST).",
-    "needHelp": "Need help with a refund or have questions?",
+    "overview_text": "SimuTarget Inc. (\"SimuTarget\", \"we\", \"us\", or \"our\") sells access to its software-as-a-service platform through Paddle.com Market Ltd. (\"Paddle\"), which acts as the Merchant of Record and authorized reseller for all transactions on simutarget.ai.",
+    "overview_text2": "All purchases — including subscriptions, one-time tests, and add-ons — are processed and managed by Paddle. As such, all refund requests are governed exclusively by Paddle's Refund Policy.",
+    "paddle_title": "Paddle's Refund Policy",
+    "paddle_text": "The full and current Refund Policy that applies to your purchase is available at:",
+    "paddle_text2": "This policy applies to every transaction made on simutarget.ai. The version in effect at the time of your purchase governs that transaction.",
+    "statutory_title": "Statutory Consumer Rights",
+    "statutory_text": "Where applicable under local law, Paddle's policy includes statutory withdrawal and cancellation rights, such as:",
+    "statutory_eu": "A 14-day right of withdrawal for consumers in the European Union, EEA, Switzerland, the United Kingdom, Turkey, and Israel.",
+    "statutory_apac": "A 7-day right of cancellation in South Korea, Brazil, China, and Canada.",
+    "statutory_singapore": "A 5-day right of cancellation in Singapore.",
+    "statutory_discretionary": "Discretionary refunds, reviewed on a case-by-case basis by Paddle within 14 days of the transaction.",
+    "statutory_text2": "In all cases, the highest level of consumer protection available under applicable law will apply. Nothing in this policy limits your statutory consumer rights.",
+    "process_title": "How to Request a Refund",
+    "process_text": "To request a refund, please use one of the following methods provided by Paddle:",
+    "process_method1": "Click \"View receipt\" or \"Manage subscription\" in your purchase confirmation email.",
+    "process_method2": "Visit",
+    "process_method3": "Contact Paddle support through the link provided in your receipt.",
+    "process_text2": "Refunds, when approved, are processed by Paddle to the original payment method, typically within 14 days of approval.",
+    "cancel_title": "Cancellations",
+    "cancel_text": "You may cancel your subscription at any time. Cancellation takes effect at the end of the current billing period and prevents any further charges. To cancel, use the \"Manage subscription\" link in your receipt or visit paddle.net.",
+    "contact_title": "Contact",
+    "contact_text": "For any questions about a specific transaction, please contact Paddle directly at",
+    "contact_text2": "For general questions about SimuTarget, you can reach us at:",
+    "needHelp": "Need help or have questions about your purchase?",
     "contactSupport": "Contact Support"
   },
-
   "partner": {
     "title": "Become Our Partner",
     "subtitle": "Join forces with SimuTarget.ai and grow your business with AI-powered market research.",

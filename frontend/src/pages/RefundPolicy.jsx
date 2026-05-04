@@ -6,11 +6,10 @@ import LegalPageLayout from '../components/LegalPageLayout'
 const sectionStyle = { marginBottom: '40px' }
 const headingStyle = { fontSize: '20px', fontWeight: '700', color: 'var(--color-text-primary)', marginBottom: '14px' }
 const textStyle = { fontSize: '15px', lineHeight: '1.8', color: 'var(--color-text-secondary)', marginBottom: '12px' }
+const linkStyle = { color: 'var(--color-accent-cyan)', textDecoration: 'underline' }
 
 function RefundPolicy() {
   const { t } = useTranslation()
-
-  const sections = ['overview', 'eligible', 'notEligible', 'process', 'timeline', 'contact']
 
   return (
     <LegalPageLayout>
@@ -22,11 +21,11 @@ function RefundPolicy() {
           <span className="gradient-text">{t('refund.title')}</span>
         </h1>
         <p style={{ fontSize: '15px', color: 'var(--color-text-muted)' }}>
-          {t('refund.lastUpdated')}: February 2025
+          {t('refund.lastUpdated')}: November 2025
         </p>
       </div>
 
-      {/* 30-Day Badge */}
+      {/* Paddle Notice Badge */}
       <div style={{
         padding: '24px 32px',
         borderRadius: '16px',
@@ -47,15 +46,93 @@ function RefundPolicy() {
         background: 'rgba(255,255,255,0.02)',
         border: '1px solid rgba(255,255,255,0.06)',
       }}>
-        {sections.map((sec, i) => (
-          <div key={sec} style={sectionStyle}>
-            <h2 style={headingStyle}>{i + 1}. {t(`refund.${sec}_title`)}</h2>
-            <p style={textStyle}>{t(`refund.${sec}_text`)}</p>
-            {t(`refund.${sec}_text2`, { defaultValue: '' }) && (
-              <p style={textStyle}>{t(`refund.${sec}_text2`)}</p>
-            )}
-          </div>
-        ))}
+        {/* 1. Overview */}
+        <div style={sectionStyle}>
+          <h2 style={headingStyle}>1. {t('refund.overview_title')}</h2>
+          <p style={textStyle}>{t('refund.overview_text')}</p>
+          <p style={textStyle}>{t('refund.overview_text2')}</p>
+        </div>
+
+        {/* 2. Paddle Refund Policy */}
+        <div style={sectionStyle}>
+          <h2 style={headingStyle}>2. {t('refund.paddle_title')}</h2>
+          <p style={textStyle}>
+            {t('refund.paddle_text')}{' '}
+            <a
+              href="https://www.paddle.com/legal/refund-policy"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={linkStyle}
+            >
+              https://www.paddle.com/legal/refund-policy
+            </a>
+          </p>
+          <p style={textStyle}>{t('refund.paddle_text2')}</p>
+        </div>
+
+        {/* 3. Statutory Rights */}
+        <div style={sectionStyle}>
+          <h2 style={headingStyle}>3. {t('refund.statutory_title')}</h2>
+          <p style={textStyle}>{t('refund.statutory_text')}</p>
+          <ul style={{ ...textStyle, paddingLeft: '24px', listStyle: 'disc' }}>
+            <li style={{ marginBottom: '8px' }}>{t('refund.statutory_eu')}</li>
+            <li style={{ marginBottom: '8px' }}>{t('refund.statutory_apac')}</li>
+            <li style={{ marginBottom: '8px' }}>{t('refund.statutory_singapore')}</li>
+            <li style={{ marginBottom: '8px' }}>{t('refund.statutory_discretionary')}</li>
+          </ul>
+          <p style={textStyle}>{t('refund.statutory_text2')}</p>
+        </div>
+
+        {/* 4. How to Request a Refund */}
+        <div style={sectionStyle}>
+          <h2 style={headingStyle}>4. {t('refund.process_title')}</h2>
+          <p style={textStyle}>{t('refund.process_text')}</p>
+          <ul style={{ ...textStyle, paddingLeft: '24px', listStyle: 'disc' }}>
+            <li style={{ marginBottom: '8px' }}>{t('refund.process_method1')}</li>
+            <li style={{ marginBottom: '8px' }}>
+              {t('refund.process_method2')}{' '}
+              <a
+                href="https://paddle.net"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={linkStyle}
+              >
+                paddle.net
+              </a>
+            </li>
+            <li style={{ marginBottom: '8px' }}>{t('refund.process_method3')}</li>
+          </ul>
+          <p style={textStyle}>{t('refund.process_text2')}</p>
+        </div>
+
+        {/* 5. Cancellations */}
+        <div style={sectionStyle}>
+          <h2 style={headingStyle}>5. {t('refund.cancel_title')}</h2>
+          <p style={textStyle}>{t('refund.cancel_text')}</p>
+        </div>
+
+        {/* 6. Contact */}
+        <div style={sectionStyle}>
+          <h2 style={headingStyle}>6. {t('refund.contact_title')}</h2>
+          <p style={textStyle}>
+            {t('refund.contact_text')}{' '}
+            <a
+              href="https://paddle.net"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={linkStyle}
+            >
+              paddle.net
+            </a>
+            .
+          </p>
+          <p style={textStyle}>
+            {t('refund.contact_text2')}{' '}
+            <a href="mailto:support@simutarget.ai" style={linkStyle}>
+              support@simutarget.ai
+            </a>
+          </p>
+        </div>
       </div>
 
       {/* CTA */}
