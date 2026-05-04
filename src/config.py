@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     # Qdrant
     qdrant_host: str = "localhost"
     qdrant_port: int = 6333
+
+    # Paddle Billing (oturum #7.8)
+    paddle_api_key: str = ""
+    paddle_webhook_secret: str = ""
+    paddle_environment: str = "production"  # production | sandbox
     
     class Config:
         env_file = ".env"

@@ -22,6 +22,9 @@ class Plan(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Paddle entegrasyonu (oturum #7.8)
+    paddle_price_id = Column(String(100), unique=True, nullable=True, index=True)
+
     # İlişkiler
     subscriptions = relationship("Subscription", back_populates="plan")
 
@@ -55,6 +58,10 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # Paddle entegrasyonu (oturum #7.8)
+    # Paddle'da customer kaydının ID'si — ilk transaction'da oluşturulup buraya yazılır
+    paddle_customer_id = Column(String(100), nullable=True, index=True)
+
     # İlişkiler
     team = relationship("Team", back_populates="members")
     subscriptions = relationship("Subscription", back_populates="user")
@@ -69,12 +76,17 @@ class Subscription(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     plan_id = Column(Integer, ForeignKey("plans.id"), nullable=False)
-    status = Column(String(20), nullable=False)  # active / cancelled / past_due
-    stripe_subscription_id = Column(String(255), nullable=True)
+    status = Column(String(20), nullable=False)  # active / cancelled / past_due / paused
+    stripe_subscription_id = Column(String(255), nullable=True)  # legacy, kullanılmıyor
     current_period_start = Column(DateTime, nullable=False)
     current_period_end = Column(DateTime, nullable=False)
     cancel_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Paddle entegrasyonu (oturum #7.8)
+    paddle_subscription_id = Column(String(100), unique=True, nullable=True, index=True)
+    paddle_customer_id = Column(String(100), nullable=True, index=True)
+    paddle_transaction_id = Column(String(100), nullable=True, index=True)  # ilk transaction
 
     # İlişkiler
     user = relationship("User", back_populates="subscriptions")
@@ -153,3 +165,24 @@ class UsageLog(Base):
 
     # İlişkiler
     user = relationship("User", back_populates="usage_logs")
+
+
+# ============================================
+# PADDLE ENTEGRASYONU — YENİ TABLO (oturum #7.8)
+# ============================================
+
+class PaddleWebhookEvent(Base):
+    """
+    Paddle'dan gelen webhook event'lerinin kaydı.
+    Idempotency için kritik: aynı event_id 2 kez gelirse 2. çağrıda
+    işlem yapılmaz (UNIQUE constraint yakalar).
+    """
+    __tablename__ = "paddle_webhook_events"
+
+    id = Column(Integer, primary_key=True)
+    event_id = Column(String(100), unique=True, nullable=False, index=True)
+    event_type = Column(String(100), nullable=False, index=True)
+    payload = Column(JSON, nullable=False)
+    processed_at = Column(DateTime, nullable=True)
+    processing_error = Column(Text, nullable=True)
+    received_at = Column(DateTime, nullable=False, default=datetime.utcnow)
