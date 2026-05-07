@@ -22,8 +22,11 @@ class Plan(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Paddle entegrasyonu (oturum #7.8)
+    # Paddle entegrasyonu (oturum #7.8) — DEPRECATED
     paddle_price_id = Column(String(100), unique=True, nullable=True, index=True)
+
+    # Lemon Squeezy entegrasyonu (oturum #7.9) — ACTIVE
+    lemonsqueezy_variant_id = Column(String(100), unique=True, nullable=True, index=True)
 
     # İlişkiler
     subscriptions = relationship("Subscription", back_populates="plan")
@@ -58,9 +61,13 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Paddle entegrasyonu (oturum #7.8)
+    # Paddle entegrasyonu (oturum #7.8) — DEPRECATED
     # Paddle'da customer kaydının ID'si — ilk transaction'da oluşturulup buraya yazılır
     paddle_customer_id = Column(String(100), nullable=True, index=True)
+
+    # Lemon Squeezy entegrasyonu (oturum #7.9) — ACTIVE
+    # LS'de customer kaydının ID'si — ilk checkout'ta oluşturulup buraya yazılır
+    lemonsqueezy_customer_id = Column(String(100), nullable=True, index=True)
 
     # İlişkiler
     team = relationship("Team", back_populates="members")
@@ -83,10 +90,15 @@ class Subscription(Base):
     cancel_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Paddle entegrasyonu (oturum #7.8)
+    # Paddle entegrasyonu (oturum #7.8) — DEPRECATED
     paddle_subscription_id = Column(String(100), unique=True, nullable=True, index=True)
     paddle_customer_id = Column(String(100), nullable=True, index=True)
     paddle_transaction_id = Column(String(100), nullable=True, index=True)  # ilk transaction
+
+    # Lemon Squeezy entegrasyonu (oturum #7.9) — ACTIVE
+    lemonsqueezy_subscription_id = Column(String(100), unique=True, nullable=True, index=True)
+    lemonsqueezy_customer_id = Column(String(100), nullable=True, index=True)
+    lemonsqueezy_order_id = Column(String(100), nullable=True, index=True)  # ilk order
 
     # İlişkiler
     user = relationship("User", back_populates="subscriptions")
@@ -168,7 +180,7 @@ class UsageLog(Base):
 
 
 # ============================================
-# PADDLE ENTEGRASYONU — YENİ TABLO (oturum #7.8)
+# PADDLE ENTEGRASYONU — DEPRECATED (oturum #7.8)
 # ============================================
 
 class PaddleWebhookEvent(Base):
@@ -176,12 +188,38 @@ class PaddleWebhookEvent(Base):
     Paddle'dan gelen webhook event'lerinin kaydı.
     Idempotency için kritik: aynı event_id 2 kez gelirse 2. çağrıda
     işlem yapılmaz (UNIQUE constraint yakalar).
+
+    DEPRECATED: LS canlıya geçtikten sonra silinecek.
     """
     __tablename__ = "paddle_webhook_events"
 
     id = Column(Integer, primary_key=True)
     event_id = Column(String(100), unique=True, nullable=False, index=True)
     event_type = Column(String(100), nullable=False, index=True)
+    payload = Column(JSON, nullable=False)
+    processed_at = Column(DateTime, nullable=True)
+    processing_error = Column(Text, nullable=True)
+    received_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+# ============================================
+# LEMON SQUEEZY ENTEGRASYONU — ACTIVE (oturum #7.9)
+# ============================================
+
+class LemonSqueezyWebhookEvent(Base):
+    """
+    Lemon Squeezy'den gelen webhook event'lerinin kaydı.
+    Idempotency için kritik.
+
+    NOT: LS Paddle gibi unique event_id göndermez. Backend raw_body'nin
+    SHA256 hash'ini event_id olarak kullanır. Aynı body 2 kez gelirse
+    aynı hash → UNIQUE constraint yakalar → idempotency.
+    """
+    __tablename__ = "lemonsqueezy_webhook_events"
+
+    id = Column(Integer, primary_key=True)
+    event_id = Column(String(100), unique=True, nullable=False, index=True)  # SHA256 hex
+    event_name = Column(String(100), nullable=False, index=True)  # subscription_created vs.
     payload = Column(JSON, nullable=False)
     processed_at = Column(DateTime, nullable=True)
     processing_error = Column(Text, nullable=True)

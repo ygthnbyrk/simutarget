@@ -28,10 +28,20 @@ class Settings(BaseSettings):
     qdrant_host: str = "localhost"
     qdrant_port: int = 6333
 
-    # Paddle Billing (oturum #7.8)
+    # Paddle Billing (oturum #7.8) — DEPRECATED, LS canlıya geçtikten sonra silinecek
     paddle_api_key: str = ""
     paddle_webhook_secret: str = ""
     paddle_environment: str = "production"  # production | sandbox
+
+    # Lemon Squeezy (oturum #7.9) — ACTIVE provider
+    lemonsqueezy_api_key: str = ""
+    lemonsqueezy_store_id: str = ""
+    lemonsqueezy_webhook_secret: str = ""
+
+    # Hangi payment provider aktif: "lemonsqueezy" | "paddle"
+    # Şu an dokümantasyon amaçlı; ileride frontend hangi JS SDK'yı yükleyeceğini
+    # bu değere göre seçer (Lemon.js vs Paddle.js).
+    payment_provider: str = "lemonsqueezy"
     
     class Config:
         env_file = ".env"
