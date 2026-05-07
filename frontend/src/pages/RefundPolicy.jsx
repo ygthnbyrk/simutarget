@@ -21,11 +21,11 @@ function RefundPolicy() {
           <span className="gradient-text">{t('refund.title')}</span>
         </h1>
         <p style={{ fontSize: '15px', color: 'var(--color-text-muted)' }}>
-          {t('refund.lastUpdated')}: November 2025
+          {t('refund.lastUpdated')}: May 2026
         </p>
       </div>
 
-      {/* Paddle Notice Badge */}
+      {/* Lemon Squeezy Notice Badge */}
       <div style={{
         padding: '24px 32px',
         borderRadius: '16px',
@@ -53,18 +53,18 @@ function RefundPolicy() {
           <p style={textStyle}>{t('refund.overview_text2')}</p>
         </div>
 
-        {/* 2. Paddle Refund Policy */}
+        {/* 2. Lemon Squeezy Refund Policy */}
         <div style={sectionStyle}>
           <h2 style={headingStyle}>2. {t('refund.paddle_title')}</h2>
           <p style={textStyle}>
             {t('refund.paddle_text')}{' '}
             <a
-              href="https://www.paddle.com/legal/refund-policy"
+              href="https://www.lemonsqueezy.com/policies/refund-policy"
               target="_blank"
               rel="noopener noreferrer"
               style={linkStyle}
             >
-              https://www.paddle.com/legal/refund-policy
+              https://www.lemonsqueezy.com/policies/refund-policy
             </a>
           </p>
           <p style={textStyle}>{t('refund.paddle_text2')}</p>
@@ -92,12 +92,12 @@ function RefundPolicy() {
             <li style={{ marginBottom: '8px' }}>
               {t('refund.process_method2')}{' '}
               <a
-                href="https://paddle.net"
+                href="https://app.lemonsqueezy.com/my-orders"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={linkStyle}
               >
-                paddle.net
+                app.lemonsqueezy.com/my-orders
               </a>
             </li>
             <li style={{ marginBottom: '8px' }}>{t('refund.process_method3')}</li>
@@ -117,19 +117,19 @@ function RefundPolicy() {
           <p style={textStyle}>
             {t('refund.contact_text')}{' '}
             <a
-              href="https://paddle.net"
+              href="https://app.lemonsqueezy.com/my-orders"
               target="_blank"
               rel="noopener noreferrer"
               style={linkStyle}
             >
-              paddle.net
+              app.lemonsqueezy.com/my-orders
             </a>
             .
           </p>
           <p style={textStyle}>
             {t('refund.contact_text2')}{' '}
-            <a href="mailto:support@simutarget.ai" style={linkStyle}>
-              support@simutarget.ai
+            <a href="mailto:contact@simutarget.ai" style={linkStyle}>
+              contact@simutarget.ai
             </a>
           </p>
         </div>
