@@ -105,6 +105,15 @@ const useAuthStore = create(
     {
       name: 'auth-storage',
       partialize: (state) => ({ token: state.token }),
+      // Token rehydrate edilirken isAuthenticated'i de true yap ve axios header'ı set et.
+      // Bu olmadan sayfa reload sonrası ProtectedRoute / AdminRoute ilk render'da
+      // isAuthenticated=false görür ve kullanıcıyı login'e atar.
+      onRehydrateStorage: () => (state) => {
+        if (state?.token) {
+          state.isAuthenticated = true
+          api.defaults.headers.common['Authorization'] = `Bearer ${state.token}`
+        }
+      },
     }
   )
 )

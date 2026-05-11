@@ -6,29 +6,41 @@ import useAuthStore from '../stores/authStore'
 /**
  * Admin yetkisi gerektiren route'ları sarmalayan component.
  *
- * Akış:
- *   1. Auth değilse → /login
- *   2. user null ise (sayfa reload sonrası) → fetchProfile çağır, bekle
- *   3. user.role !== 'admin' → /dashboard (sessizce)
- *   4. user.role === 'admin' → children render et
+ * Akış (sıralama önemli):
+ *   1. Mount → checking=true, loader göster (henüz karar yok)
+ *   2. useEffect: localStorage'da token var mı?
+ *      - Yok → checking=false → /login
+ *      - Var → user yüklü mü?
+ *          - Hayır → fetchProfile() çağır → checking=false
+ *          - Evet → checking=false
+ *   3. Render:
+ *      - checking ise loader
+ *      - token yoksa /login
+ *      - user yoksa (profile çekemedi) /login
+ *      - user.role !== 'admin' ise /dashboard
+ *      - aksi takdirde children
  *
  * Backend'de ayrıca 403 kontrolü var, bu sadece UX katmanı.
  */
 function AdminRoute({ children }) {
-  const { isAuthenticated, user, fetchProfile } = useAuthStore()
-  const [checking, setChecking] = useState(!user)
+  const { user, fetchProfile } = useAuthStore()
+  const [checking, setChecking] = useState(true)
 
   useEffect(() => {
     let mounted = true
 
     const verifyAdmin = async () => {
-      if (!isAuthenticated) {
+      const localToken = localStorage.getItem('token')
+
+      if (!localToken) {
         if (mounted) setChecking(false)
         return
       }
+
       if (!user) {
         await fetchProfile()
       }
+
       if (mounted) setChecking(false)
     }
 
@@ -40,10 +52,6 @@ function AdminRoute({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
-  }
-
   if (checking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -52,7 +60,15 @@ function AdminRoute({ children }) {
     )
   }
 
-  if (user?.role !== 'admin') {
+  if (!localStorage.getItem('token')) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (user.role !== 'admin') {
     return <Navigate to="/dashboard" replace />
   }
 
