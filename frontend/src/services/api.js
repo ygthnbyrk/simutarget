@@ -85,3 +85,15 @@ export const campaignsAPI = {
   },
   deleteImage: (campaignId) => api.delete(`/campaigns/${campaignId}/image`),
 }
+
+// ============================================
+// ADMIN API (sadece role=admin user için, backend 403 ile korunur)
+// ============================================
+
+export const adminAPI = {
+  stats: () => api.get('/admin/stats'),
+  users: (params) => api.get('/admin/users', { params }),
+  subscriptions: (params) => api.get('/admin/subscriptions', { params }),
+  campaigns: (params) => api.get('/admin/campaigns', { params }),
+  recentActivity: (limit = 20) => api.get('/admin/recent-activity', { params: { limit } }),
+}

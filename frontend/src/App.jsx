@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import ScrollToTop from './components/ScrollToTop'
+import AdminRoute from './components/AdminRoute'
 import useAuthStore from './stores/authStore'
 
 // Pages
@@ -13,6 +14,7 @@ import ABCompare from './pages/ABCompare'
 import MultiCompare from './pages/MultiCompare'
 import History from './pages/History'
 import Profile from './pages/Profile'
+import AdminDashboard from './pages/AdminDashboard'
 
 // Legal & Info Pages
 import AboutUs from './pages/AboutUs'
@@ -128,6 +130,16 @@ function App() {
           <ProtectedRoute>
             <Profile />
           </ProtectedRoute>
+        }
+      />
+
+      {/* Admin Routes (protected + role=admin check) */}
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
         }
       />
 
