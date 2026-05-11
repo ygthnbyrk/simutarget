@@ -1,4 +1,5 @@
 """SimuTarget Kimlik Doğrulama Sistemi"""
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -11,9 +12,12 @@ from pydantic import BaseModel, EmailStr
 from src.database.connection import get_db
 from src.database.models import User, Subscription, Plan
 from src.database.credit_service import CreditService
+from src.services.notification_service import notify_new_user
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 # JWT Ayarları
 SECRET_KEY = os.getenv("SECRET_KEY", "simutarget-secret-key-degistir-bunu")
@@ -94,6 +98,24 @@ def get_current_user(
     return user
 
 
+def get_current_admin(
+    user: User = Depends(get_current_user)
+) -> User:
+    """
+    Admin yetkisi gerektiren endpoint'ler için dependency.
+
+    User.role == "admin" değilse 403 döner.
+    Kendi user'ını admin yapmak için (production DB'de):
+        UPDATE users SET role = 'admin' WHERE email = 'senin@email.com';
+    """
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bu işlem için admin yetkisi gerekli."
+        )
+    return user
+
+
 # ---- Auth Endpoint Fonksiyonları ----
 
 def register_user(data: UserRegister, db: Session) -> TokenResponse:
@@ -119,6 +141,19 @@ def register_user(data: UserRegister, db: Session) -> TokenResponse:
 
     # Token oluştur
     token = create_access_token({"sub": str(user.id)})
+
+    # Telegram bildirimi (fire-and-forget — hata olursa register etkilenmez)
+    try:
+        total_users = db.query(User).count()
+        notify_new_user(
+            email=user.email,
+            user_id=user.id,
+            name=user.name,
+            total_users=total_users,
+        )
+    except Exception as e:
+        # Bildirim hatası register'ı bozmasın
+        logger.warning(f"Yeni üye bildirimi gönderilemedi: {e}")
 
     return TokenResponse(
         access_token=token,

@@ -44,6 +44,13 @@ from src.services.lemonsqueezy_service import (
     LemonSqueezySignatureError,
     LemonSqueezyError,
 )
+from src.services.notification_service import (
+    notify_new_subscription,
+    notify_one_time_payment,
+    notify_subscription_cancelled,
+    notify_payment_failed,
+    notify_refund,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -475,6 +482,20 @@ def _handle_order_created(payload: dict, db: Session):
         f"amount={plan.credits_monthly}, order_id={order_id}"
     )
 
+    # Telegram bildirimi (fire-and-forget)
+    try:
+        # LS total cent → dollar
+        amount_cents = attrs.get("total") or 0
+        amount_usd = amount_cents / 100 if amount_cents else None
+        notify_one_time_payment(
+            email=user.email,
+            product=plan.name,
+            amount_usd=amount_usd,
+            order_id=order_id,
+        )
+    except Exception as e:
+        logger.warning(f"order_created bildirimi gönderilemedi: {e}")
+
 
 def _handle_order_refunded(payload: dict, db: Session):
     """
@@ -589,6 +610,16 @@ def _handle_order_refunded(payload: dict, db: Session):
         f"credits_refunded={actual_refund}, money_refund=${refund_amount_dollars:.2f}"
     )
 
+    # Telegram bildirimi (fire-and-forget)
+    try:
+        notify_refund(
+            email=user.email,
+            amount_usd=refund_amount_dollars,
+            order_id=order_id,
+        )
+    except Exception as e:
+        logger.warning(f"order_refunded bildirimi gönderilemedi: {e}")
+
 
 # ============================================
 # SUBSCRIPTION HANDLERS
@@ -685,6 +716,19 @@ def _handle_subscription_created(payload: dict, db: Session):
         f"ls_sub_id={ls_sub_id}, credits={plan.credits_monthly}"
     )
 
+    # Telegram bildirimi (fire-and-forget)
+    try:
+        amount_usd = float(plan.price_monthly) if plan.price_monthly else None
+        notify_new_subscription(
+            email=user.email,
+            plan=plan.name,
+            amount_usd=amount_usd,
+            subscription_id=ls_sub_id,
+            is_renewal=False,
+        )
+    except Exception as e:
+        logger.warning(f"subscription_created bildirimi gönderilemedi: {e}")
+
 
 def _handle_subscription_updated(payload: dict, db: Session):
     """
@@ -756,6 +800,20 @@ def _handle_subscription_cancelled(payload: dict, db: Session):
     db.commit()
 
     logger.info(f"Subscription iptal: ls_sub_id={ls_sub_id}, ends_at={ends_at}")
+
+    # Telegram bildirimi (fire-and-forget)
+    try:
+        user = db.query(User).filter(User.id == sub.user_id).first()
+        plan = db.query(Plan).filter(Plan.id == sub.plan_id).first()
+        if user and plan:
+            notify_subscription_cancelled(
+                email=user.email,
+                plan=plan.name,
+                subscription_id=ls_sub_id,
+                ends_at=ends_at,
+            )
+    except Exception as e:
+        logger.warning(f"subscription_cancelled bildirimi gönderilemedi: {e}")
 
 
 def _handle_subscription_resumed(payload: dict, db: Session):
@@ -890,6 +948,21 @@ def _handle_subscription_payment_success(payload: dict, db: Session):
                     f"plan={plan.slug}, ls_sub_id={ls_sub_id}"
                 )
 
+                # Telegram bildirimi (sadece renewal — initial subscription_created'da bildirildi)
+                try:
+                    user = db.query(User).filter(User.id == sub.user_id).first()
+                    if user:
+                        amount_usd = float(plan.price_monthly) if plan.price_monthly else None
+                        notify_new_subscription(
+                            email=user.email,
+                            plan=plan.name,
+                            amount_usd=amount_usd,
+                            subscription_id=str(ls_sub_id),
+                            is_renewal=True,
+                        )
+                except Exception as e:
+                    logger.warning(f"renewal bildirimi gönderilemedi: {e}")
+
     db.commit()
 
 
@@ -911,6 +984,19 @@ def _handle_subscription_payment_failed(payload: dict, db: Session):
     sub.status = "past_due"
     db.commit()
     logger.warning(f"Subscription ödeme başarısız: ls_sub_id={ls_sub_id}")
+
+    # Telegram bildirimi (fire-and-forget)
+    try:
+        user = db.query(User).filter(User.id == sub.user_id).first()
+        plan = db.query(Plan).filter(Plan.id == sub.plan_id).first()
+        if user and plan:
+            notify_payment_failed(
+                email=user.email,
+                plan=plan.name,
+                subscription_id=str(ls_sub_id),
+            )
+    except Exception as e:
+        logger.warning(f"payment_failed bildirimi gönderilemedi: {e}")
 
 
 def _handle_subscription_payment_recovered(payload: dict, db: Session):
