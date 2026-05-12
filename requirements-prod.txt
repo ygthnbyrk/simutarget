@@ -17,3 +17,6 @@ python-multipart>=0.0.6
 email-validator>=2.0.0
 
 httpx>=0.25.0
+
+# Google OAuth (oturum #8.1) — Google ID token verify
+google-auth>=2.23.0

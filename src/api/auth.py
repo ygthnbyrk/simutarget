@@ -24,6 +24,9 @@ SECRET_KEY = os.getenv("SECRET_KEY", "simutarget-secret-key-degistir-bunu")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 saat
 
+# Google OAuth Ayarları (oturum #8.1)
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+
 security = HTTPBearer()
 
 
@@ -37,6 +40,10 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+class GoogleLoginRequest(BaseModel):
+    """Frontend'den gelen Google ID token (credential)."""
+    credential: str
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -133,7 +140,8 @@ def register_user(data: UserRegister, db: Session) -> TokenResponse:
         email=data.email,
         name=data.name,
         password_hash=hash_password(data.password),
-        role="user"
+        role="user",
+        auth_provider="email",
     )
     db.add(user)
     db.commit()
@@ -165,7 +173,20 @@ def login_user(data: UserLogin, db: Session) -> TokenResponse:
     """Kullanıcı girişi"""
     user = db.query(User).filter(User.email == data.email).first()
     
-    if not user or not verify_password(data.password, user.password_hash):
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email veya şifre hatalı."
+        )
+
+    # Google ile kayıt olmuş kullanıcı şifreyle giriş yapmaya çalışıyorsa
+    if not user.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Bu hesap Google ile kayıtlı. Lütfen Google ile giriş yapın."
+        )
+
+    if not verify_password(data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email veya şifre hatalı."
@@ -178,6 +199,135 @@ def login_user(data: UserLogin, db: Session) -> TokenResponse:
         )
 
     token = create_access_token({"sub": str(user.id)})
+
+    return TokenResponse(
+        access_token=token,
+        user={"id": user.id, "email": user.email, "name": user.name}
+    )
+
+
+def login_or_register_google(data: GoogleLoginRequest, db: Session) -> TokenResponse:
+    """
+    Google OAuth ile giriş veya kayıt.
+
+    Frontend'den gelen ID token'ı Google'a verify ettirir, kullanıcıyı bulur
+    veya yenisini oluşturur. Tek kullanıcı tek user row mantığı:
+      - Email mevcutsa: o user'a Google'ı bağla (auto-link)
+      - Email yoksa: yeni user oluştur, Telegram bildirimi gönder
+
+    Frontend → POST /api/v1/auth/google {"credential": "<id_token>"}
+    """
+    if not GOOGLE_CLIENT_ID:
+        logger.error("GOOGLE_CLIENT_ID env var tanımlı değil!")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Google OAuth backend'de yapılandırılmamış."
+        )
+
+    # 1. Google ID token'ı verify et
+    try:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as google_requests
+
+        idinfo = id_token.verify_oauth2_token(
+            data.credential,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID,
+            clock_skew_in_seconds=10,  # küçük zaman farkları için tolerans
+        )
+    except ValueError as e:
+        logger.warning(f"Google token verify başarısız: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google kimlik doğrulama başarısız. Lütfen tekrar deneyin."
+        )
+    except ImportError:
+        logger.error("google-auth paketi yüklü değil!")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Backend Google OAuth için yapılandırılmamış."
+        )
+    except Exception as e:
+        logger.error(f"Google token verify beklenmedik hata: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google kimlik doğrulama başarısız."
+        )
+
+    # 2. Google'dan gelen bilgileri çıkar
+    google_id = idinfo.get("sub")  # Google'ın unique user ID'si
+    email = idinfo.get("email", "").lower().strip()
+    email_verified = idinfo.get("email_verified", False)
+    name = idinfo.get("name") or email.split("@")[0]
+
+    if not google_id or not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Google hesabından email veya ID alınamadı."
+        )
+
+    if not email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Google hesabınızın email adresi doğrulanmamış."
+        )
+
+    # 3. Kullanıcı arama — önce google_id, sonra email
+    user = db.query(User).filter(User.google_id == google_id).first()
+
+    is_new_user = False
+
+    if not user:
+        # Aynı email mevcut mu? (email/password ile kayıt olmuş olabilir)
+        user = db.query(User).filter(User.email == email).first()
+
+        if user:
+            # MEVCUT EMAIL — Google hesabını otomatik bağla
+            user.google_id = google_id
+            if user.auth_provider == "email":
+                # auth_provider'ı "email" olarak bırakırız — birden fazla yöntem var
+                # ama UI için ilk kayıt yöntemi önemli; istersen "both" yapılabilir
+                pass
+            db.commit()
+            db.refresh(user)
+        else:
+            # YENİ KULLANICI — kayıt oluştur
+            user = User(
+                email=email,
+                name=name[:100],
+                password_hash=None,  # Google ile geldi, şifre yok
+                role="user",
+                google_id=google_id,
+                auth_provider="google",
+                is_active=True,
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            is_new_user = True
+
+    # 4. Hesap aktif mi?
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Hesabınız devre dışı."
+        )
+
+    # 5. JWT token oluştur
+    token = create_access_token({"sub": str(user.id)})
+
+    # 6. Yeni user ise Telegram bildirimi (fire-and-forget)
+    if is_new_user:
+        try:
+            total_users = db.query(User).count()
+            notify_new_user(
+                email=user.email,
+                user_id=user.id,
+                name=user.name,
+                total_users=total_users,
+            )
+        except Exception as e:
+            logger.warning(f"Yeni üye bildirimi gönderilemedi: {e}")
 
     return TokenResponse(
         access_token=token,

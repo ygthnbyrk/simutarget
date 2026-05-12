@@ -8,8 +8,9 @@ from .routes import (
 )
 from src.database.connection import get_db
 from src.api.auth import (
-    UserRegister, UserLogin, TokenResponse, UserProfile,
-    register_user, login_user, get_user_profile, get_current_user
+    UserRegister, UserLogin, GoogleLoginRequest, TokenResponse, UserProfile,
+    register_user, login_user, login_or_register_google,
+    get_user_profile, get_current_user,
 )
 from src.database.models import User
 from src.database.credit_service import CreditService, FeatureGateService
@@ -66,6 +67,20 @@ async def register(data: UserRegister, db: Session = Depends(get_db)):
 async def login(data: UserLogin, db: Session = Depends(get_db)):
     """Kullanici girisi"""
     return login_user(data, db)
+
+
+@app.post("/api/v1/auth/google", response_model=TokenResponse, tags=["Auth"])
+async def google_login(data: GoogleLoginRequest, db: Session = Depends(get_db)):
+    """
+    Google OAuth ile giris veya kayit.
+
+    Frontend Google Identity Services popup'undan ID token alir,
+    bu endpoint'e gonderir. Backend verify edip JWT doner.
+
+    Email mevcutsa: Google hesabini otomatik baglar (auto-link).
+    Email yoksa: Yeni kullanici olusturur, Telegram bildirimi gonderir.
+    """
+    return login_or_register_google(data, db)
 
 
 @app.get("/api/v1/auth/profile", response_model=UserProfile, tags=["Auth"])

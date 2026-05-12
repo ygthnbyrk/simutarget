@@ -54,12 +54,17 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     email = Column(String(255), unique=True, nullable=False)
     name = Column(String(100), nullable=False)
-    password_hash = Column(String(255), nullable=False)
+    # password_hash NULLABLE — Google ile kayıt olan kullanıcıların şifresi yoktur
+    password_hash = Column(String(255), nullable=True)
     role = Column(String(20), default="user")  # user / admin
     team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Google OAuth entegrasyonu (oturum #8.1)
+    google_id = Column(String(100), unique=True, nullable=True, index=True)
+    auth_provider = Column(String(20), nullable=False, default="email")  # "email" / "google"
 
     # Paddle entegrasyonu (oturum #7.8) — DEPRECATED
     # Paddle'da customer kaydının ID'si — ilk transaction'da oluşturulup buraya yazılır
