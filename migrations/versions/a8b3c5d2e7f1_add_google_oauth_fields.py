@@ -1,7 +1,7 @@
 """add_google_oauth_fields
 
 Revision ID: a8b3c5d2e7f1
-Revises: d892920ad1e3
+Revises: c4f5e1a8d3b9
 Create Date: 2026-05-12 14:50:00.000000
 
 Google OAuth desteği için users tablosuna 2 yeni kolon ekler:
@@ -19,7 +19,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'a8b3c5d2e7f1'
-down_revision: Union[str, Sequence[str], None] = 'd892920ad1e3'
+down_revision: Union[str, Sequence[str], None] = 'c4f5e1a8d3b9'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
