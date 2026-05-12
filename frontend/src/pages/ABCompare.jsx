@@ -87,6 +87,10 @@ function ABCompare() {
     { code: 'MENA', name: t('common.mena') },
   ]
 
+  // A/B comparison = 2 variants per persona, so cost = personaCount * 2
+  const VARIANT_COUNT = 2
+  const totalCost = personaCount * VARIANT_COUNT
+
   // Image handlers
   const validateAndSetImage = (file, setFile, setPreview) => {
     if (!file) return
@@ -128,7 +132,7 @@ function ABCompare() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (personaCount > balance) { setError(t('common.insufficientCredits')); return }
+    if (totalCost > balance) { setError(t('common.insufficientCredits')); return }
     if (!contentA.trim() && !imageFileA) { setError('Please provide content or image for Campaign A'); return }
     if (!contentB.trim() && !imageFileB) { setError('Please provide content or image for Campaign B'); return }
     setError(null); setTestResults(null); setIsTestRunning(true)
@@ -291,13 +295,20 @@ function ABCompare() {
 
             {/* Cost / Balance */}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '24px', background: 'var(--color-bg-tertiary)', borderRadius: '12px', marginBottom: '24px' }}>
-              <div><div style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>{t('abCompare.totalCost')}</div><div style={{ fontSize: '28px', fontWeight: '700' }}>{personaCount} {t('common.credits')}</div></div>
-              <div style={{ textAlign: 'right' }}><div style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>{t('abCompare.yourBalance')}</div><div style={{ fontSize: '28px', fontWeight: '700', color: personaCount > balance ? 'var(--color-danger)' : 'var(--color-accent-cyan)' }}>{balance} {t('common.credits')}</div></div>
+              <div>
+                <div style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>{t('abCompare.totalCost')}</div>
+                <div style={{ fontSize: '28px', fontWeight: '700' }}>{totalCost} {t('common.credits')}</div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '4px' }}>{personaCount} personas × 2 variants</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>{t('abCompare.yourBalance')}</div>
+                <div style={{ fontSize: '28px', fontWeight: '700', color: totalCost > balance ? 'var(--color-danger)' : 'var(--color-accent-cyan)' }}>{balance} {t('common.credits')}</div>
+              </div>
             </div>
 
             {error && <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', marginBottom: '24px' }}><XCircle style={{ width: '20px', height: '20px', color: 'var(--color-danger)' }} /><span style={{ color: 'var(--color-danger)' }}>{error}</span></div>}
 
-            <button type="submit" disabled={isTestRunning || (!contentA && !imageFileA) || (!contentB && !imageFileB) || personaCount > balance} className="btn btn-primary" style={{ width: '100%', padding: '18px', fontSize: '16px', opacity: (isTestRunning || (!contentA && !imageFileA) || (!contentB && !imageFileB) || personaCount > balance) ? 0.5 : 1 }}>
+            <button type="submit" disabled={isTestRunning || (!contentA && !imageFileA) || (!contentB && !imageFileB) || totalCost > balance} className="btn btn-primary" style={{ width: '100%', padding: '18px', fontSize: '16px', opacity: (isTestRunning || (!contentA && !imageFileA) || (!contentB && !imageFileB) || totalCost > balance) ? 0.5 : 1 }}>
               {isTestRunning ? (
                 <>
                   <Loader2 style={{ width: '20px', height: '20px', animation: 'spin 1s linear infinite' }} />

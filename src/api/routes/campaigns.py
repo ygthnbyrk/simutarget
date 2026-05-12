@@ -604,6 +604,187 @@ def _save_to_agent_mining(
         db.rollback()
 
 
+def _save_ab_to_agent_mining(
+    db: Session,
+    campaign: CampaignDB,
+    content_a: str,
+    content_b: str,
+    results: list,
+):
+    """
+    A/B karşılaştırma kararlarını agent mining tablolarına kaydeder.
+
+    Her variant ayrı AMReferenceCampaign olarak, her persona × variant çifti için
+    ayrı AMAgentDecision yazılır.
+
+    Mantık:
+    - Persona "A" seçti  → Variant A kampanyasına BUY, Variant B'ye NO_BUY
+    - Persona "B" seçti  → Variant A'ya NO_BUY, Variant B'ye BUY
+    - Persona "HİÇBİRİ"  → Her iki variant'a da NO_BUY
+
+    Sonuç: 1 persona = 2 decision. 10 personalı A/B test → 20 decision.
+    Hata olsa bile ana akışı asla bozmaz.
+    """
+    try:
+        import uuid as _uuid
+
+        variants = [("A", content_a or ""), ("B", content_b or "")]
+        am_campaign_ids = {}
+
+        # Her variant için ayrı bir AMReferenceCampaign
+        for label, content in variants:
+            buy_count = sum(1 for r in results if r.get("choice") == label)
+            no_buy_count = len(results) - buy_count
+
+            am_campaign_id = _uuid.uuid4()
+            am_campaign = AMReferenceCampaign(
+                id=am_campaign_id,
+                name=f"[A/B] {campaign.name} - Variant {label}"[:200],
+                content=content[:500],
+                category="User A/B Test",
+                product_name=f"{campaign.name[:180]} ({label})",
+                price_tl=None,
+                price_usd=None,
+                status=AMCampaignStatus.COMPLETED,
+                total_personas_run=len(results),
+                buy_count=buy_count,
+                no_buy_count=no_buy_count,
+                created_at=datetime.utcnow(),
+            )
+            db.add(am_campaign)
+            am_campaign_ids[label] = am_campaign_id
+
+        db.flush()
+
+        # Her persona için iki variant'a da bir decision yaz
+        for r in results:
+            persona_id_str = r.get("persona_id")
+            if not persona_id_str:
+                continue
+            try:
+                persona_uuid = _uuid.UUID(str(persona_id_str))
+            except (ValueError, AttributeError):
+                continue
+
+            chosen = r.get("choice")  # "A", "B", veya "HİÇBİRİ"
+            confidence = r.get("confidence", 5) or 5
+            reasoning = (r.get("reasoning") or "")[:800]
+
+            for label, _content in variants:
+                is_chosen = (chosen == label)
+                decision_type = AMDecisionType.BUY if is_chosen else AMDecisionType.NO_BUY
+
+                if is_chosen:
+                    variant_reasoning = f"Tercih edilen ({label}): {reasoning}"
+                else:
+                    variant_reasoning = (
+                        f"Tercih edilmedi (seçim: {chosen or 'yok'}, bu variant: {label})"
+                    )
+
+                am_decision = AMAgentDecision(
+                    campaign_id=am_campaign_ids[label],
+                    persona_id=persona_uuid,
+                    decision=decision_type,
+                    confidence=int(confidence),
+                    reasoning=variant_reasoning[:1000],
+                )
+                db.add(am_decision)
+
+        db.flush()
+    except Exception:
+        # Sessizce yok say — ana akışı asla bozma
+        db.rollback()
+
+
+def _save_multi_to_agent_mining(
+    db: Session,
+    campaign: CampaignDB,
+    options: dict,
+    results: list,
+):
+    """
+    Multi karşılaştırma kararlarını agent mining tablolarına kaydeder.
+
+    Her seçenek ayrı AMReferenceCampaign, her persona × seçenek çifti için
+    ayrı AMAgentDecision yazılır.
+
+    Mantık (N seçenek):
+    - Persona seçeneklerden birini seçer → o seçeneğe BUY, diğer N-1'e NO_BUY
+    - Persona HICBIRI seçer → tüm seçeneklere NO_BUY
+
+    Sonuç: 1 persona = N decision. 10 persona × 3 option → 30 decision.
+    Hata olsa bile ana akışı asla bozmaz.
+    """
+    try:
+        import uuid as _uuid
+
+        am_campaign_ids = {}
+
+        # Her seçenek için ayrı bir AMReferenceCampaign
+        for label, content in options.items():
+            buy_count = sum(1 for r in results if r.get("choice") == label)
+            no_buy_count = len(results) - buy_count
+
+            am_campaign_id = _uuid.uuid4()
+            am_campaign = AMReferenceCampaign(
+                id=am_campaign_id,
+                name=f"[Multi] {campaign.name} - Variant {label}"[:200],
+                content=(content or "")[:500],
+                category="User Multi Test",
+                product_name=f"{campaign.name[:180]} ({label})",
+                price_tl=None,
+                price_usd=None,
+                status=AMCampaignStatus.COMPLETED,
+                total_personas_run=len(results),
+                buy_count=buy_count,
+                no_buy_count=no_buy_count,
+                created_at=datetime.utcnow(),
+            )
+            db.add(am_campaign)
+            am_campaign_ids[label] = am_campaign_id
+
+        db.flush()
+
+        # Her persona için her seçeneğe bir decision yaz
+        for r in results:
+            persona_id_str = r.get("persona_id")
+            if not persona_id_str:
+                continue
+            try:
+                persona_uuid = _uuid.UUID(str(persona_id_str))
+            except (ValueError, AttributeError):
+                continue
+
+            chosen = r.get("choice")  # "A","B","C","D" veya "HICBIRI"
+            confidence = r.get("confidence", 5) or 5
+            reasoning = (r.get("reasoning") or "")[:800]
+
+            for label in options.keys():
+                is_chosen = (chosen == label)
+                decision_type = AMDecisionType.BUY if is_chosen else AMDecisionType.NO_BUY
+
+                if is_chosen:
+                    variant_reasoning = f"Tercih edilen ({label}): {reasoning}"
+                else:
+                    variant_reasoning = (
+                        f"Tercih edilmedi (seçim: {chosen or 'yok'}, bu variant: {label})"
+                    )
+
+                am_decision = AMAgentDecision(
+                    campaign_id=am_campaign_ids[label],
+                    persona_id=persona_uuid,
+                    decision=decision_type,
+                    confidence=int(confidence),
+                    reasoning=variant_reasoning[:1000],
+                )
+                db.add(am_decision)
+
+        db.flush()
+    except Exception:
+        # Sessizce yok say — ana akışı asla bozma
+        db.rollback()
+
+
 # ============================================
 # ENDPOINTS
 # ============================================
@@ -1029,6 +1210,8 @@ async def compare_campaigns(
                 "b_score": comparison.option_scores.get("B", 0),
                 "influencing_factors": comparison.influencing_factors,
                 "persona_data": _build_persona_data(persona),
+                # Agent Mining flywheel için
+                "persona_id": persona.id,
             })
 
         # Kampanya özetini güncelle
@@ -1066,6 +1249,16 @@ async def compare_campaigns(
             user_id=user.id, amount=required_credits, reference_id=reference_id,
         )
 
+        db.commit()
+
+        # Agent Mining flywheel — A/B kararlarını veri setine ekle
+        _save_ab_to_agent_mining(
+            db=db,
+            campaign=campaign,
+            content_a=campaign_text,
+            content_b=request.content_b,
+            results=results_data,
+        )
         db.commit()
 
         avg_conf = total_confidence / total if total > 0 else 0
@@ -1204,6 +1397,8 @@ async def multi_compare_campaigns(
                 "option_scores": comparison.option_scores,
                 "influencing_factors": comparison.influencing_factors,
                 "persona_data": _build_persona_data(persona),
+                # Agent Mining flywheel için
+                "persona_id": persona.id,
             })
 
         # Kampanya ozetini guncelle
@@ -1243,6 +1438,15 @@ async def multi_compare_campaigns(
             user_id=user.id, amount=required_credits, reference_id=reference_id,
         )
 
+        db.commit()
+
+        # Agent Mining flywheel — Multi kararlarını veri setine ekle
+        _save_multi_to_agent_mining(
+            db=db,
+            campaign=campaign,
+            options=request.options,
+            results=results_data,
+        )
         db.commit()
 
         return MultiCompareResultResponse(

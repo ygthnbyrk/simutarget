@@ -49,7 +49,8 @@ function MultiCompare() {
     setCampaigns(updated)
   }
 
-  const totalCost = personaCount
+  // Multi comparison = N variants per persona, so cost = personaCount * campaigns.length
+  const totalCost = personaCount * campaigns.length
   const allFilled = campaigns.every(c => c.trim().length > 0)
 
   // Gate check
@@ -146,40 +147,39 @@ function MultiCompare() {
           <div className="card" style={{ padding: '40px', marginBottom: '32px' }}>
             {/* Test Name */}
             <div style={{ marginBottom: '32px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>Test Name (optional)</label>
-              <input type="text" value={testName} onChange={(e) => setTestName(e.target.value)} className="input" placeholder="e.g., Q1 Market Comparison" />
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>{t('multiCompare.testName')}</label>
+              <input type="text" value={testName} onChange={(e) => setTestName(e.target.value)} className="input" placeholder={t('multiCompare.testNamePlaceholder')} />
             </div>
 
-            {/* Campaign Inputs */}
+            {/* Campaigns */}
             <div style={{ marginBottom: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <label style={{ fontSize: '14px', fontWeight: '600' }}>Campaign Variants *</label>
+                <label style={{ fontSize: '14px', fontWeight: '600' }}>{t('multiCompare.campaignVariants')} ({campaigns.length}/4)</label>
                 {campaigns.length < 4 && (
-                  <button type="button" onClick={addCampaign} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', border: '1px dashed var(--color-border)', background: 'transparent', color: 'var(--color-accent-cyan)', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
-                    <Plus style={{ width: '14px', height: '14px' }} /> Add Option {labels[campaigns.length]}
+                  <button type="button" onClick={addCampaign} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '13px' }}>
+                    <Plus style={{ width: '14px', height: '14px' }} /> {t('multiCompare.addVariant')}
                   </button>
                 )}
               </div>
-
-              <div style={{ display: 'grid', gap: '20px' }}>
+              <div style={{ display: 'grid', gap: '16px' }}>
                 {campaigns.map((content, i) => (
-                  <div key={i}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                  <div key={i} style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '8px', background: colors[i], color: i === 1 ? '#fff' : '#000', fontSize: '13px', fontWeight: '700' }}>{labels[i]}</span>
-                      <span style={{ fontSize: '14px', fontWeight: '500' }}>Campaign {labels[i]}</span>
-                      {i >= 3 && (
-                        <button type="button" onClick={() => removeCampaign(i)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', padding: '4px' }}>
-                          <Trash2 style={{ width: '16px', height: '16px' }} />
+                      <label style={{ fontSize: '14px', fontWeight: '600' }}>Campaign {labels[i]} *</label>
+                      {campaigns.length > 3 && (
+                        <button type="button" onClick={() => removeCampaign(i)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+                          <Trash2 style={{ width: '14px', height: '14px' }} /> Remove
                         </button>
                       )}
                     </div>
-                    <textarea value={content} onChange={(e) => updateCampaign(i, e.target.value)} className="input" style={{ minHeight: '100px', resize: 'vertical' }} placeholder={`Enter campaign variant ${labels[i]}...`} required />
+                    <textarea value={content} onChange={(e) => updateCampaign(i, e.target.value)} className="input" style={{ minHeight: '100px', resize: 'vertical' }} placeholder={t('multiCompare.variantPlaceholder', { label: labels[i] })} required />
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Region Selection */}
+            {/* Region */}
             <div style={{ marginBottom: '32px' }}>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>Target Region</label>
               <div className="grid-4-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
@@ -193,7 +193,7 @@ function MultiCompare() {
               </div>
             </div>
 
-            {/* Persona Count */}
+            {/* Persona count */}
             <div style={{ marginBottom: '32px' }}>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>{t('multiCompare.personaCount')}: 
                 <input type="number" value={personaCount} onChange={(e) => setPersonaCount(Math.max(10, Math.min(2000, Number(e.target.value) || 10)))} min="10" max="2000" style={{ width: '70px', marginLeft: '8px', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', color: 'var(--color-accent-cyan)', fontSize: '14px', fontWeight: '700', textAlign: 'center' }} />
