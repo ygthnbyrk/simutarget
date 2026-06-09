@@ -1,17 +1,24 @@
 """
 SimuTarget Abonelik Yönetimi API
 
-Akış:
-  POST /subscriptions/subscribe → Plan seç → Subscription oluştur → Kredi yükle
-  GET  /subscriptions/current → Mevcut abonelik bilgisi
-  POST /subscriptions/change → Plan değiştir (yükselt/düşür)
-  POST /subscriptions/cancel → Abonelik iptal et
-  
-Not: Stripe entegrasyonu sonraki adımda eklenecek.
-Şimdilik "free trial" mantığıyla çalışır — plan seçince direkt aktif olur.
+DEPRECATION NOT (Oturum #8.2):
+  Bu modülün /subscribe, /change ve /cancel endpoint'leri ÖDEME ALMADAN
+  DB'de direkt subscription oluşturuyordu/değiştiriyordu (mock/legacy kod —
+  Lemon Squeezy entegrasyonundan önce yazılmış).
+
+  Live Mode'a geçişte güvenlik için 410 Gone dönecek şekilde devre dışı
+  bırakıldılar. Yeni akış:
+
+    Yeni abonelik:   POST /api/v1/lemonsqueezy/checkout
+    Plan değiştir:   POST /api/v1/lemonsqueezy/checkout (yeni plan ile)
+    Mevcut yönetim:  POST /api/v1/lemonsqueezy/portal (cancel/upgrade dahil)
+
+Hala aktif olan endpoint'ler:
+  GET  /api/v1/subscriptions/plans   → planları listele (auth gerekmez)
+  GET  /api/v1/subscriptions/current → mevcut abonelik bilgisi (auth gerekli)
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime, timedelta, timezone
@@ -30,12 +37,12 @@ router = APIRouter()
 # ============================================
 
 class SubscribeRequest(BaseModel):
-    """Plan seçimi isteği."""
+    """Plan seçimi isteği. (DEPRECATED — artık kullanılmıyor)"""
     plan_slug: str = Field(..., description="Plan slug: disposable, starter, pro, business, enterprise")
 
 
 class ChangePlanRequest(BaseModel):
-    """Plan değiştirme isteği."""
+    """Plan değiştirme isteği. (DEPRECATED — artık kullanılmıyor)"""
     new_plan_slug: str = Field(..., description="Yeni plan slug")
 
 
@@ -68,14 +75,6 @@ class PlanResponse(BaseModel):
 # YARDIMCI FONKSİYONLAR
 # ============================================
 
-def _get_plan_or_404(plan_slug: str, db: Session) -> Plan:
-    """Plan slug'ından planı getir."""
-    plan = db.query(Plan).filter(Plan.slug == plan_slug, Plan.is_active == True).first()
-    if not plan:
-        raise HTTPException(404, f"Plan bulunamadı: {plan_slug}")
-    return plan
-
-
 def _get_active_subscription(user_id: int, db: Session) -> Optional[Subscription]:
     """Kullanıcının aktif aboneliğini getir."""
     return (
@@ -86,33 +85,6 @@ def _get_active_subscription(user_id: int, db: Session) -> Optional[Subscription
         )
         .first()
     )
-
-
-def _create_subscription(user: User, plan: Plan, db: Session) -> Subscription:
-    """Yeni abonelik oluştur ve kredi yükle."""
-    now = datetime.now(timezone.utc)
-    period_end = now + timedelta(days=30)
-
-    subscription = Subscription(
-        user_id=user.id,
-        plan_id=plan.id,
-        status="active",
-        current_period_start=now,
-        current_period_end=period_end,
-    )
-    db.add(subscription)
-    db.flush()  # ID almak için
-
-    # Kredi yükle
-    credit_service = CreditService(db)
-    credit_service.grant_credits(
-        user_id=user.id,
-        amount=plan.credits_monthly,
-        description=f"{plan.name} planı aktivasyonu — {plan.credits_monthly} kredi",
-        expires_at=period_end,
-    )
-
-    return subscription
 
 
 def _build_subscription_response(
@@ -134,7 +106,7 @@ def _build_subscription_response(
 
 
 # ============================================
-# ENDPOINTS
+# AKTİF ENDPOINTS
 # ============================================
 
 @router.get("/plans", response_model=list[PlanResponse])
@@ -160,42 +132,6 @@ async def list_available_plans(db: Session = Depends(get_db)):
     ]
 
 
-@router.post("/subscribe", response_model=SubscriptionResponse)
-async def subscribe_to_plan(
-    request: SubscribeRequest,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """
-    Plana abone ol.
-    - Aktif abonelik varsa hata verir (change endpoint kullanılmalı)
-    - Subscription oluşturur
-    - Plan kredilerini otomatik yükler
-    """
-    # Plan kontrolü
-    plan = _get_plan_or_404(request.plan_slug, db)
-
-    # Mevcut aktif abonelik kontrolü
-    existing = _get_active_subscription(user.id, db)
-    if existing:
-        raise HTTPException(
-            400,
-            f"Zaten aktif bir aboneliğiniz var ({existing.plan.name}). "
-            f"Plan değiştirmek için /subscriptions/change endpoint'ini kullanın."
-        )
-
-    # Abonelik oluştur + kredi yükle
-    subscription = _create_subscription(user, plan, db)
-    db.commit()
-    db.refresh(subscription)
-
-    # Güncel bakiye
-    credit_service = CreditService(db)
-    balance = credit_service.get_balance(user.id)
-
-    return _build_subscription_response(subscription, plan, balance)
-
-
 @router.get("/current", response_model=SubscriptionResponse)
 async def get_current_subscription(
     user: User = Depends(get_current_user),
@@ -214,77 +150,62 @@ async def get_current_subscription(
     return _build_subscription_response(subscription, plan, balance)
 
 
-@router.post("/change", response_model=SubscriptionResponse)
-async def change_plan(
+# ============================================
+# DEVRE DIŞI ENDPOINTS — 410 GONE
+# (Live Mode güvenlik kapısı — Oturum #8.2)
+# ============================================
+
+_DEPRECATED_MSG_SUBSCRIBE = (
+    "Bu endpoint devre dışı bırakıldı. Yeni abonelik için "
+    "POST /api/v1/lemonsqueezy/checkout kullanılmalıdır. "
+    "(Eski mock endpoint ödeme almadan abonelik oluşturuyordu — Live Mode'a "
+    "geçişte güvenlik nedeniyle kapatıldı.)"
+)
+
+_DEPRECATED_MSG_CHANGE = (
+    "Bu endpoint devre dışı bırakıldı. Plan değişikliği için: "
+    "1) POST /api/v1/lemonsqueezy/portal ile mevcut aboneliği iptal et, "
+    "2) POST /api/v1/lemonsqueezy/checkout ile yeni plana abone ol."
+)
+
+_DEPRECATED_MSG_CANCEL = (
+    "Bu endpoint devre dışı bırakıldı. Abonelik iptali için "
+    "POST /api/v1/lemonsqueezy/portal kullanılmalıdır — Lemon Squeezy "
+    "customer portal'ından iptal edebilirsiniz. (DB-only cancel artık "
+    "kullanılmıyor, çünkü gerçek ödeme provider'da kesinti devam ederdi.)"
+)
+
+
+@router.post("/subscribe", deprecated=True)
+async def subscribe_to_plan_deprecated(
+    request: SubscribeRequest,
+    user: User = Depends(get_current_user),
+):
+    """DEPRECATED — bkz. POST /api/v1/lemonsqueezy/checkout"""
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail=_DEPRECATED_MSG_SUBSCRIBE,
+    )
+
+
+@router.post("/change", deprecated=True)
+async def change_plan_deprecated(
     request: ChangePlanRequest,
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ):
-    """
-    Plan değiştir (yükselt veya düşür).
-    - Mevcut aboneliği iptal eder
-    - Kalan kredileri sıfırlar
-    - Yeni plan ile yeni abonelik oluşturur
-    - Yeni plan kredilerini yükler
-    
-    Not: Gerçek üründe Stripe proration yapılacak. Şimdilik basit geçiş.
-    """
-    # Yeni plan kontrolü
-    new_plan = _get_plan_or_404(request.new_plan_slug, db)
-
-    # Mevcut abonelik kontrolü
-    current_sub = _get_active_subscription(user.id, db)
-    if not current_sub:
-        raise HTTPException(400, "Aktif abonelik yok. Önce /subscriptions/subscribe kullanın.")
-
-    # Aynı plana geçiş engelle
-    if current_sub.plan_id == new_plan.id:
-        raise HTTPException(400, "Zaten bu planda abonesiniz.")
-
-    # 1. Mevcut aboneliği iptal et
-    current_sub.status = "cancelled"
-    current_sub.cancel_at = datetime.now(timezone.utc)
-
-    # 2. Kalan kredileri sıfırla
-    credit_service = CreditService(db)
-    credit_service.expire_credits(user.id)
-
-    # 3. Yeni abonelik + kredi yükle
-    new_subscription = _create_subscription(user, new_plan, db)
-    db.commit()
-    db.refresh(new_subscription)
-
-    balance = credit_service.get_balance(user.id)
-
-    return _build_subscription_response(new_subscription, new_plan, balance)
+    """DEPRECATED — bkz. POST /api/v1/lemonsqueezy/checkout"""
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail=_DEPRECATED_MSG_CHANGE,
+    )
 
 
-@router.post("/cancel")
-async def cancel_subscription(
+@router.post("/cancel", deprecated=True)
+async def cancel_subscription_deprecated(
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ):
-    """
-    Aboneliği iptal et.
-    - Dönem sonuna kadar aktif kalır
-    - Krediler dönem sonunda sıfırlanır
-    
-    Not: Gerçek üründe Stripe cancellation yapılacak.
-    """
-    subscription = _get_active_subscription(user.id, db)
-    if not subscription:
-        raise HTTPException(404, "Aktif abonelik bulunamadı.")
-
-    plan = db.query(Plan).filter(Plan.id == subscription.plan_id).first()
-
-    # İptal işaretle — dönem sonuna kadar aktif kalacak
-    subscription.status = "cancelled"
-    subscription.cancel_at = subscription.current_period_end
-    db.commit()
-
-    return {
-        "status": "cancelled",
-        "message": f"{plan.name} aboneliğiniz iptal edildi. "
-                   f"{subscription.current_period_end.strftime('%d.%m.%Y')} tarihine kadar aktif kalacak.",
-        "active_until": subscription.current_period_end.isoformat(),
-    }
+    """DEPRECATED — bkz. POST /api/v1/lemonsqueezy/portal"""
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail=_DEPRECATED_MSG_CANCEL,
+    )

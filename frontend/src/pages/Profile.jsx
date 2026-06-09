@@ -1,20 +1,55 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { User, Mail, CreditCard, Calendar, ArrowRight, Check, X, Loader2 } from 'lucide-react'
+import { User, Mail, CreditCard, Calendar, ArrowRight, Check, X, Loader2, ExternalLink, AlertTriangle } from 'lucide-react'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import useAuthStore from '../stores/authStore'
 import useCreditStore from '../stores/creditStore'
 
 function Profile() {
   const { user } = useAuthStore()
-  const { balance, subscription, plans, fetchPlans, changePlan, subscribe, cancelSubscription, isLoading } = useCreditStore()
+  const {
+    balance,
+    subscription,
+    plans,
+    fetchPlans,
+    fetchBalance,
+    fetchSubscription,
+    changePlan,
+    subscribe,
+    openCustomerPortal,
+    isLoading,
+  } = useCreditStore()
   const [selectedPlan, setSelectedPlan] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
+  const [showPlanChangeWarning, setShowPlanChangeWarning] = useState(false)
+  const [checkoutMessage, setCheckoutMessage] = useState(null) // 'success' | 'cancelled' | null
   const { t } = useTranslation()
 
-  useEffect(() => { fetchPlans() }, [])
+  useEffect(() => {
+    fetchPlans()
+    fetchSubscription()
+    fetchBalance()
+
+    // ?checkout=success ile dönen kullanıcı için: 2 saniye sonra refresh
+    // (LS webhook'un DB'yi güncellemesi için zaman bırak)
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('checkout') === 'success') {
+      setCheckoutMessage('success')
+      // Webhook gecikme buffer'ı
+      const t1 = setTimeout(() => {
+        fetchSubscription()
+        fetchBalance()
+      }, 2000)
+      // URL'i temizle (geri tuşunda tekrar tetiklenmesin)
+      const url = new URL(window.location.href)
+      url.searchParams.delete('checkout')
+      window.history.replaceState({}, '', url.toString())
+      return () => clearTimeout(t1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const allFeatures = [
     { name: t('profile.monthlyCredits'), disposable: '5', starter: '50', pro: '200', business: '600', enterprise: '2000' },
@@ -34,24 +69,44 @@ function Profile() {
     { slug: 'enterprise', name: 'Enterprise', price_monthly: null, credits_monthly: 2000 },
   ]
 
+  // Kullanıcının zaten aboneliği varsa ve yeni "subscription" planı seçtiyse uyarı göster
+  const handlePlanSelect = (planSlug) => {
+    setSelectedPlan(planSlug)
+    // Aboneliği var ve seçtiği plan disposable değilse (yani başka bir abonelik) → uyarı modal
+    if (subscription && planSlug !== 'disposable' && subscription.plan_slug !== planSlug) {
+      setShowPlanChangeWarning(true)
+    } else {
+      setShowModal(true)
+    }
+  }
+
   const handleUpgrade = async () => {
     if (!selectedPlan) return
     try {
+      // creditStore.subscribe ve changePlan ikisi de aynı LS checkout akışı.
+      // İkisi de window.LemonSqueezy.Url.Open() ile overlay açar.
       let result
       if (!subscription) {
         result = await subscribe(selectedPlan)
       } else {
         result = await changePlan(selectedPlan)
       }
-      if (result?.success) { setShowModal(false); setSelectedPlan(null) }
+      if (result?.success) {
+        // Overlay açıldı, modal'ı kapat (overlay'in arkasında durması UX'i bozar)
+        setShowModal(false)
+        setSelectedPlan(null)
+      }
+      // success=false ise creditStore.error set edildi, modal açık kalır
     } catch (err) {
-      console.error('Plan change error:', err)
+      console.error('Checkout error:', err)
     }
   }
 
-  const handleCancel = async () => {
-    const result = await cancelSubscription()
-    if (result?.success) { setShowCancelModal(false) }
+  // "Önce mevcut aboneliği iptal et" → LS portal aç
+  const handleManageSubscription = async () => {
+    setShowPlanChangeWarning(false)
+    setShowCancelModal(false)
+    await openCustomerPortal()
   }
 
   return (
@@ -61,6 +116,34 @@ function Profile() {
           <h1 style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px' }}>{t('profile.title')}</h1>
           <p style={{ fontSize: '16px', color: 'var(--color-text-muted)' }}>{t('profile.subtitle')}</p>
         </div>
+
+        {/* Checkout success banner */}
+        {checkoutMessage === 'success' && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              padding: '16px 24px',
+              marginBottom: '24px',
+              borderRadius: '12px',
+              background: 'rgba(34, 197, 94, 0.1)',
+              border: '1px solid rgba(34, 197, 94, 0.3)',
+              color: 'var(--color-success, #22c55e)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+            }}
+          >
+            <Check style={{ width: '20px', height: '20px' }} />
+            <span>Ödeme başarılı! Aboneliğiniz birkaç saniye içinde aktifleşecek.</span>
+            <button
+              onClick={() => setCheckoutMessage(null)}
+              style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}
+            >
+              <X style={{ width: '18px', height: '18px' }} />
+            </button>
+          </motion.div>
+        )}
 
         {/* Account Info */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="card" style={{ padding: '32px', marginBottom: '32px' }}>
@@ -99,9 +182,26 @@ function Profile() {
             </div>
           </div>
           {subscription && (
-            <div style={{ marginTop: '16px', textAlign: 'right' }}>
-              <button onClick={() => setShowCancelModal(true)} style={{ background: 'none', border: 'none', color: 'var(--color-danger)', fontSize: '13px', cursor: 'pointer', padding: '8px 0', opacity: 0.7, transition: 'opacity 0.2s' }} onMouseEnter={e => e.target.style.opacity = 1} onMouseLeave={e => e.target.style.opacity = 0.7}>
-                {t('profile.cancelSubscription')}
+            <div style={{ marginTop: '20px', display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <button
+                onClick={openCustomerPortal}
+                disabled={isLoading}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'var(--color-bg-tertiary)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-primary)',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  fontWeight: '500',
+                }}
+              >
+                <ExternalLink style={{ width: '16px', height: '16px' }} />
+                Manage Subscription
               </button>
             </div>
           )}
@@ -155,7 +255,7 @@ function Profile() {
                           {t('pricing.contactUs')}
                         </button>
                       ) : (
-                        <button onClick={() => { setSelectedPlan(plan.slug); setShowModal(true) }} className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '14px' }}>
+                        <button onClick={() => handlePlanSelect(plan.slug)} className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: '14px' }}>
                           {defaultPlans.findIndex(p => p.slug === plan.slug) > defaultPlans.findIndex(p => p.slug === subscription?.plan_slug) ? t('profile.upgrade') : t('profile.switch')}
                         </button>
                       )}
@@ -167,36 +267,64 @@ function Profile() {
           </div>
         </motion.div>
 
-        {/* Plan Change Modal */}
+        {/* Plan Selection Modal (LS Checkout açacak) */}
         {showModal && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', padding: '24px' }}>
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card" style={{ padding: '32px', maxWidth: '400px', width: '100%' }}>
-              <h3 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '16px' }}>{t('profile.changePlan')}</h3>
-              <p style={{ color: 'var(--color-text-muted)', marginBottom: '32px' }}>
-                {t('profile.changePlanConfirm', { plan: selectedPlan?.charAt(0).toUpperCase() + selectedPlan?.slice(1) })}
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card" style={{ padding: '32px', maxWidth: '420px', width: '100%' }}>
+              <h3 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '16px' }}>
+                {subscription ? t('profile.changePlan') : 'Subscribe'}
+              </h3>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: '8px', lineHeight: 1.6 }}>
+                <strong style={{ color: 'var(--color-text-primary)' }}>
+                  {selectedPlan?.charAt(0).toUpperCase() + selectedPlan?.slice(1)}
+                </strong>{' '}
+                planı için Lemon Squeezy güvenli ödeme sayfası açılacak.
+              </p>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: '24px', fontSize: '13px' }}>
+                Kartınızla ödeme yaptıktan sonra otomatik olarak buraya döneceksiniz ve aboneliğiniz aktifleşecek.
               </p>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={() => { setShowModal(false); setSelectedPlan(null) }} className="btn btn-secondary" style={{ flex: 1, padding: '14px' }}>{t('common.cancel')}</button>
+                <button onClick={() => { setShowModal(false); setSelectedPlan(null) }} className="btn btn-secondary" style={{ flex: 1, padding: '14px' }}>
+                  {t('common.cancel')}
+                </button>
                 <button onClick={handleUpgrade} disabled={isLoading} className="btn btn-primary" style={{ flex: 1, padding: '14px' }}>
-                  {isLoading ? <Loader2 style={{ width: '18px', height: '18px', animation: 'spin 1s linear infinite' }} /> : t('common.confirm')}
+                  {isLoading ? <Loader2 style={{ width: '18px', height: '18px', animation: 'spin 1s linear infinite' }} /> : 'Ödeme sayfasına git'}
                 </button>
               </div>
             </motion.div>
           </div>
         )}
 
-        {/* Cancel Subscription Modal */}
-        {showCancelModal && (
+        {/* Plan Change Warning Modal (mevcut subscription var, başka subscription'a geçmek istiyor) */}
+        {showPlanChangeWarning && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', padding: '24px' }}>
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card" style={{ padding: '32px', maxWidth: '400px', width: '100%' }}>
-              <h3 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '16px', color: 'var(--color-danger)' }}>{t('profile.cancelSubscription')}</h3>
-              <p style={{ color: 'var(--color-text-muted)', marginBottom: '32px' }}>
-                {t('profile.cancelConfirm', { plan: subscription?.plan_name })}
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card" style={{ padding: '32px', maxWidth: '460px', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <AlertTriangle style={{ width: '28px', height: '28px', color: '#f59e0b' }} />
+                <h3 style={{ fontSize: '22px', fontWeight: '700', margin: 0 }}>Önce mevcut aboneliğinizi iptal edin</h3>
+              </div>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: '16px', lineHeight: 1.6 }}>
+                Şu an <strong style={{ color: 'var(--color-text-primary)' }}>{subscription?.plan_name}</strong> aboneliğiniz aktif.
+                Yeni bir plana geçmek için önce mevcut aboneliği iptal etmeniz gerekiyor —
+                aksi halde iki abonelikten birden ücretlendirilirsiniz.
+              </p>
+              <p style={{ color: 'var(--color-text-muted)', marginBottom: '24px', fontSize: '13px', lineHeight: 1.6 }}>
+                <strong style={{ color: 'var(--color-text-primary)' }}>Manage Subscription</strong> butonuna basarak Lemon Squeezy
+                portalında aboneliğinizi iptal edin. İptal sonrası bu sayfaya dönüp yeni planı satın alabilirsiniz.
               </p>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={() => setShowCancelModal(false)} className="btn btn-secondary" style={{ flex: 1, padding: '14px' }}>{t('common.close')}</button>
-                <button onClick={handleCancel} disabled={isLoading} style={{ flex: 1, padding: '14px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: '600', background: 'var(--color-danger)', color: 'white', opacity: isLoading ? 0.6 : 1 }}>
-                  {isLoading ? <Loader2 style={{ width: '18px', height: '18px', animation: 'spin 1s linear infinite' }} /> : t('profile.confirmCancel')}
+                <button onClick={() => { setShowPlanChangeWarning(false); setSelectedPlan(null) }} className="btn btn-secondary" style={{ flex: 1, padding: '14px' }}>
+                  Vazgeç
+                </button>
+                <button onClick={handleManageSubscription} disabled={isLoading} className="btn btn-primary" style={{ flex: 1, padding: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  {isLoading ? (
+                    <Loader2 style={{ width: '18px', height: '18px', animation: 'spin 1s linear infinite' }} />
+                  ) : (
+                    <>
+                      <ExternalLink style={{ width: '16px', height: '16px' }} />
+                      Aboneliği Yönet
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>

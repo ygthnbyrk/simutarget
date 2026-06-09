@@ -48,11 +48,35 @@ export const plansAPI = {
   list: () => api.get('/plans'),
 }
 
+// ============================================
+// SUBSCRIPTIONS API
+// (subscribe/change/cancel kaldırıldı — Oturum #8.2)
+// Yeni akış: lemonsqueezyAPI.checkout / .portal
+// ============================================
 export const subscriptionsAPI = {
   current: () => api.get('/subscriptions/current'),
-  subscribe: (planSlug) => api.post('/subscriptions/subscribe', { plan_slug: planSlug }),
-  change: (planSlug) => api.post('/subscriptions/change', { new_plan_slug: planSlug }),
-  cancel: () => api.post('/subscriptions/cancel'),
+}
+
+// ============================================
+// LEMON SQUEEZY API (Oturum #8.2)
+// ============================================
+export const lemonsqueezyAPI = {
+  /**
+   * Backend'den LS checkout URL al.
+   * @param {string} planSlug - 'disposable' | 'starter' | 'pro' | 'business'
+   * @param {string} redirectUrl - Ödeme sonrası dönülecek URL
+   * @returns {Promise<{checkout_url, checkout_id, plan_slug, plan_name, expires_at}>}
+   */
+  checkout: (planSlug, redirectUrl) => api.post('/lemonsqueezy/checkout', {
+    plan_slug: planSlug,
+    redirect_url: redirectUrl,
+  }),
+
+  /**
+   * LS Customer Portal URL al — kullanıcı orada subscription'ını yönetir
+   * (cancel, kart günceller, fatura indirir).
+   */
+  portal: () => api.post('/lemonsqueezy/portal'),
 }
 
 export const creditsAPI = {

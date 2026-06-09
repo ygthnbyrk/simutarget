@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { creditsAPI, subscriptionsAPI, plansAPI } from '../services/api'
+import { creditsAPI, subscriptionsAPI, plansAPI, lemonsqueezyAPI } from '../services/api'
 
 const useCreditStore = create((set, get) => ({
   balance: 0,
@@ -33,6 +33,7 @@ const useCreditStore = create((set, get) => ({
       const response = await subscriptionsAPI.current()
       set({ subscription: response.data, isLoading: false })
     } catch (error) {
+      // 404 normal — kullanıcının subscription'ı yok
       set({ subscription: null, isLoading: false })
     }
   },
@@ -46,47 +47,92 @@ const useCreditStore = create((set, get) => ({
     }
   },
 
+  // ============================================
+  // LEMON SQUEEZY CHECKOUT FLOW (Oturum #8.2)
+  // ============================================
+
+  /**
+   * Yeni plana abone ol — LS checkout overlay açar.
+   *
+   * Akış:
+   *   1. Backend'den checkout URL al (POST /lemonsqueezy/checkout)
+   *   2. window.LemonSqueezy.Url.Open(url) ile overlay aç
+   *   3. Kullanıcı kart girer, öder
+   *   4. LS webhook → backend DB'yi günceller
+   *   5. Kullanıcı redirectUrl'e döner (?checkout=success)
+   *   6. Profile/Dashboard auto-refresh ile yeni subscription görünür
+   *
+   * @param {string} planSlug
+   * @returns {Promise<{success, checkoutUrl?, error?}>}
+   */
   subscribe: async (planSlug) => {
     set({ isLoading: true, error: null })
     try {
-      const response = await subscriptionsAPI.subscribe(planSlug)
-      set({ subscription: response.data, isLoading: false })
-      get().fetchBalance()
-      return { success: true }
+      const redirectUrl = `${window.location.origin}/dashboard?checkout=success`
+      const response = await lemonsqueezyAPI.checkout(planSlug, redirectUrl)
+      const checkoutUrl = response.data.checkout_url
+
+      // Lemon.js overlay aç (index.html'de script yüklü, window.LemonSqueezy global)
+      if (typeof window !== 'undefined' && window.LemonSqueezy && window.LemonSqueezy.Url) {
+        window.LemonSqueezy.Url.Open(checkoutUrl)
+      } else {
+        // Fallback: Lemon.js yüklenmemişse, full page redirect
+        console.warn('Lemon.js yüklenmemiş, full page redirect kullanılıyor')
+        window.location.href = checkoutUrl
+      }
+
+      set({ isLoading: false })
+      return { success: true, checkoutUrl }
     } catch (error) {
-      const message = error.response?.data?.detail || 'Subscription failed'
+      const message = error.response?.data?.detail || 'Checkout açılamadı. Lütfen tekrar deneyin.'
       set({ error: message, isLoading: false })
       return { success: false, error: message }
     }
   },
 
+  /**
+   * Plan değişikliği — şu an için subscribe ile aynı akış.
+   *
+   * UX notu: Kullanıcının zaten aktif aboneliği varsa, Profile.jsx önce
+   * uyarı modal'ı gösterir ("Önce mevcut aboneliği iptal edin"). Burada
+   * yalnızca yeni plan için checkout açılır.
+   */
   changePlan: async (planSlug) => {
+    return get().subscribe(planSlug)
+  },
+
+  /**
+   * Customer Portal aç (cancel/kart güncelleme/fatura için).
+   * Yeni sekmede LS portal'ı açar.
+   */
+  openCustomerPortal: async () => {
     set({ isLoading: true, error: null })
     try {
-      const response = await subscriptionsAPI.change(planSlug)
-      set({ subscription: response.data, isLoading: false })
-      get().fetchBalance()
+      const response = await lemonsqueezyAPI.portal()
+      const portalUrl = response.data.portal_url
+      window.open(portalUrl, '_blank', 'noopener,noreferrer')
+      set({ isLoading: false })
       return { success: true }
     } catch (error) {
-      const message = error.response?.data?.detail || 'Plan change failed'
+      const message = error.response?.data?.detail
+        || 'Portal açılamadı. Henüz aktif aboneliğiniz olmayabilir.'
       set({ error: message, isLoading: false })
       return { success: false, error: message }
     }
   },
 
+  /**
+   * Cancel subscription — kullanıcıyı LS customer portal'a yönlendirir.
+   * (Eski DB-only cancel kaldırıldı, çünkü gerçek ödeme provider'da kesinti
+   * devam ederdi.)
+   */
   cancelSubscription: async () => {
-    set({ isLoading: true, error: null })
-    try {
-      const response = await subscriptionsAPI.cancel()
-      set({ subscription: null, isLoading: false })
-      get().fetchBalance()
-      return { success: true, message: response.data.message }
-    } catch (error) {
-      const message = error.response?.data?.detail || 'Cancellation failed'
-      set({ error: message, isLoading: false })
-      return { success: false, error: message }
-    }
+    return get().openCustomerPortal()
   },
+
+  // ============================================
+  // CREDIT HELPERS
+  // ============================================
 
   checkCredits: async (amount) => {
     try {
