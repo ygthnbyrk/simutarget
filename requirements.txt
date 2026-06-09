@@ -16,3 +16,6 @@ pytest>=7.0.0
 pytest-asyncio>=0.21.0
 
 
+
+# Google OAuth baðýmlýlýðý (google.auth.transport.requests için) — Oturum #8.2
+requests>=2.31.0

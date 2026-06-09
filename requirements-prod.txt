@@ -20,3 +20,7 @@ httpx>=0.25.0
 
 # Google OAuth (oturum #8.1) — Google ID token verify
 google-auth>=2.23.0
+
+# Google OAuth ba  ml l    (google.auth.transport.requests i in)   Oturum #8.2
+requests>=2.31.0
+
