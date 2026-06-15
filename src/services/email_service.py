@@ -104,11 +104,11 @@ def send_async(to_email: str, subject: str, html: str) -> None:
 # ============================================
 
 def _password_reset_html(name: Optional[str], reset_url: str) -> str:
-    """Şifre sıfırlama email gövdesi (Türkçe, email-client uyumlu inline CSS)."""
-    greeting = f"Merhaba {name}," if name else "Merhaba,"
+    """Password reset email body (English, email-client friendly inline CSS)."""
+    greeting = f"Hi {name}," if name else "Hi,"
     return f"""\
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -129,28 +129,28 @@ def _password_reset_html(name: Optional[str], reset_url: str) -> str:
             <td style="padding:32px;">
               <p style="margin:0 0 16px;font-size:16px;color:#0f172a;">{greeting}</p>
               <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#334155;">
-                Hesabınız için bir şifre sıfırlama talebi aldık. Yeni şifrenizi belirlemek için
-                aşağıdaki butona tıklayın.
+                We received a request to reset the password for your account. Click the button
+                below to set a new password.
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
                 <tr>
                   <td align="center" style="border-radius:8px;background-color:#4f46e5;">
                     <a href="{reset_url}" target="_blank"
                        style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">
-                      Şifremi Sıfırla
+                      Reset Password
                     </a>
                   </td>
                 </tr>
               </table>
               <p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#64748b;">
-                Buton çalışmazsa bu bağlantıyı tarayıcınıza yapıştırın:<br>
+                If the button doesn't work, paste this link into your browser:<br>
                 <a href="{reset_url}" target="_blank" style="color:#4f46e5;word-break:break-all;">{reset_url}</a>
               </p>
               <p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#64748b;">
-                Bu bağlantı <strong>1 saat</strong> boyunca geçerlidir.
+                This link is valid for <strong>1 hour</strong>.
               </p>
               <p style="margin:0;font-size:13px;line-height:1.6;color:#64748b;">
-                Bu talebi siz yapmadıysanız bu e-postayı yok sayabilirsiniz; şifreniz değişmez.
+                If you didn't request this, you can safely ignore this email; your password won't change.
               </p>
             </td>
           </tr>
@@ -158,7 +158,7 @@ def _password_reset_html(name: Optional[str], reset_url: str) -> str:
           <tr>
             <td style="padding:20px 32px;border-top:1px solid #e2e8f0;">
               <p style="margin:0;font-size:12px;color:#94a3b8;">
-                © SimuTarget — AI destekli sentetik pazar araştırması
+                © SimuTarget — AI-powered synthetic market research
               </p>
             </td>
           </tr>
@@ -175,7 +175,7 @@ def _password_reset_html(name: Optional[str], reset_url: str) -> str:
 # ============================================
 
 def send_password_reset_email(to_email: str, name: Optional[str], reset_url: str) -> None:
-    """Şifre sıfırlama bağlantısı emaili (fire-and-forget)."""
-    subject = "SimuTarget — Şifre Sıfırlama"
+    """Password reset link email (fire-and-forget)."""
+    subject = "SimuTarget — Password Reset"
     html = _password_reset_html(name, reset_url)
     send_async(to_email, subject, html)
