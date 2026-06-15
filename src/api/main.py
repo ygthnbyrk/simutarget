@@ -9,7 +9,9 @@ from .routes import (
 from src.database.connection import get_db
 from src.api.auth import (
     UserRegister, UserLogin, GoogleLoginRequest, TokenResponse, UserProfile,
+    ForgotPasswordRequest, ResetPasswordRequest, MessageResponse,
     register_user, login_user, login_or_register_google,
+    forgot_password, reset_password,
     get_user_profile, get_current_user,
 )
 from src.database.models import User
@@ -81,6 +83,27 @@ async def google_login(data: GoogleLoginRequest, db: Session = Depends(get_db)):
     Email yoksa: Yeni kullanici olusturur, Telegram bildirimi gonderir.
     """
     return login_or_register_google(data, db)
+
+
+@app.post("/api/v1/auth/forgot-password", response_model=MessageResponse, tags=["Auth"])
+async def forgot_password_endpoint(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Sifre sifirlama talebi.
+
+    Guvenlik: email var/yok bilgisini sizdirmaz — her durumda ayni generic 200 doner.
+    Email kayitliysa 1 saat gecerli, tek kullanimlik bir sifirlama baglantisi gonderir.
+    """
+    return forgot_password(data, db)
+
+
+@app.post("/api/v1/auth/reset-password", response_model=MessageResponse, tags=["Auth"])
+async def reset_password_endpoint(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Sifre sifirlama tamamlama.
+
+    Email'deki token + yeni sifre alir. Token gecerliyse sifreyi gunceller.
+    """
+    return reset_password(data, db)
 
 
 @app.get("/api/v1/auth/profile", response_model=UserProfile, tags=["Auth"])

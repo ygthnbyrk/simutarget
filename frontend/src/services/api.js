@@ -42,6 +42,13 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   profile: () => api.get('/auth/profile'),
+
+  // Şifre sıfırlama (Oturum #8.3)
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token, newPassword) => api.post('/auth/reset-password', {
+    token,
+    new_password: newPassword,
+  }),
 }
 
 export const plansAPI = {

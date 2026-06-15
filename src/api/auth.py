@@ -1,6 +1,8 @@
 """SimuTarget Kimlik Doğrulama Sistemi"""
+import hashlib
 import logging
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import Depends, HTTPException, status
@@ -10,9 +12,10 @@ import bcrypt as _bcrypt
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from src.database.connection import get_db
-from src.database.models import User, Subscription, Plan
+from src.database.models import User, Subscription, Plan, PasswordResetToken
 from src.database.credit_service import CreditService
 from src.services.notification_service import notify_new_user
+from src.services.email_service import send_password_reset_email
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -26,6 +29,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 saat
 
 # Google OAuth Ayarları (oturum #8.1)
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+
+# Şifre sıfırlama (oturum #8.3)
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://simutarget.ai")
+PASSWORD_RESET_EXPIRE_HOURS = 1
+MIN_PASSWORD_LENGTH = 8
 
 security = HTTPBearer()
 
@@ -44,6 +52,18 @@ class UserLogin(BaseModel):
 class GoogleLoginRequest(BaseModel):
     """Frontend'den gelen Google ID token (credential)."""
     credential: str
+
+class ForgotPasswordRequest(BaseModel):
+    """Şifre sıfırlama talebi — kullanıcı email'ini girer."""
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    """Şifre sıfırlama tamamlama — email'deki token + yeni şifre."""
+    token: str
+    new_password: str
+
+class MessageResponse(BaseModel):
+    message: str
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -75,6 +95,11 @@ def verify_password(password: str, hashed: str) -> bool:
 
 def hash_password(password: str) -> str:
     return _bcrypt.hashpw(password.encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
+
+
+def _hash_reset_token(raw_token: str) -> str:
+    """Ham reset token'ın SHA256 hex'i — DB'ye yalnızca bu yazılır."""
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
 def get_current_user(
@@ -332,6 +357,112 @@ def login_or_register_google(data: GoogleLoginRequest, db: Session) -> TokenResp
     return TokenResponse(
         access_token=token,
         user={"id": user.id, "email": user.email, "name": user.name}
+    )
+
+
+def forgot_password(data: ForgotPasswordRequest, db: Session) -> MessageResponse:
+    """
+    Şifre sıfırlama talebi (oturum #8.3).
+
+    Güvenlik:
+      - Email var/yok bilgisini SIZDIRMAZ (enumeration koruması): her durumda
+        aynı generic 200 döner.
+      - Ham token yalnızca email'e gider; DB'ye yalnızca SHA256 hash yazılır.
+      - 1 saat geçerli, tek kullanımlık.
+      - Yeni token üretilince kullanıcının eski kullanılmamış token'ları
+        geçersiz kılınır (used=True).
+      - Google-only kullanıcılar da sıfırlayabilir (şifre belirleyip email
+        girişi ekleyebilir); google_id korunur.
+    """
+    generic = MessageResponse(
+        message="Eğer bu email adresi kayıtlıysa, şifre sıfırlama bağlantısı gönderildi."
+    )
+
+    email = (data.email or "").lower().strip()
+    if not email:
+        return generic
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user or not user.is_active:
+        return generic
+
+    # Eski kullanılmamış token'ları geçersiz kıl
+    db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.used == False,  # noqa: E712
+    ).update({"used": True}, synchronize_session=False)
+
+    # Yeni token üret — ham token email'e, hash DB'ye
+    raw_token = secrets.token_urlsafe(32)
+    reset_token = PasswordResetToken(
+        user_id=user.id,
+        token_hash=_hash_reset_token(raw_token),
+        expires_at=datetime.utcnow() + timedelta(hours=PASSWORD_RESET_EXPIRE_HOURS),
+        used=False,
+    )
+    db.add(reset_token)
+    db.commit()
+
+    # Email gönder (fire-and-forget — hata sıfırlama akışını bozmaz)
+    reset_url = f"{FRONTEND_URL.rstrip('/')}/reset-password/{raw_token}"
+    try:
+        send_password_reset_email(
+            to_email=user.email,
+            name=user.name,
+            reset_url=reset_url,
+        )
+    except Exception as e:
+        logger.warning(f"Şifre sıfırlama emaili gönderilemedi: {e}")
+
+    return generic
+
+
+def reset_password(data: ResetPasswordRequest, db: Session) -> MessageResponse:
+    """
+    Şifre sıfırlama tamamlama (oturum #8.3).
+
+    Email'deki ham token + yeni şifre alınır. Token'ın hash'i DB'de aranır,
+    geçerliyse (kullanılmamış + süresi dolmamış) şifre güncellenir ve token
+    kullanılmış işaretlenir.
+    """
+    if not data.token or not data.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token ve yeni şifre zorunludur."
+        )
+
+    if len(data.new_password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Şifre en az {MIN_PASSWORD_LENGTH} karakter olmalıdır."
+        )
+
+    token_hash = _hash_reset_token(data.token)
+    reset_token = (
+        db.query(PasswordResetToken)
+        .filter(PasswordResetToken.token_hash == token_hash)
+        .first()
+    )
+
+    invalid_exc = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Geçersiz veya süresi dolmuş bağlantı. Lütfen yeni bir sıfırlama isteyin."
+    )
+
+    if not reset_token or reset_token.used or reset_token.expires_at <= datetime.utcnow():
+        raise invalid_exc
+
+    user = db.query(User).filter(User.id == reset_token.user_id).first()
+    if not user or not user.is_active:
+        raise invalid_exc
+
+    # Şifreyi güncelle, token'ı kullanıldı işaretle
+    user.password_hash = hash_password(data.new_password)
+    reset_token.used = True
+    db.commit()
+
+    return MessageResponse(
+        message="Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz."
     )
 
 

@@ -8,6 +8,8 @@ import Landing from './pages/Landing'
 import Pricing from './pages/Pricing'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 import CampaignTest from './pages/CampaignTest'
 import ABCompare from './pages/ABCompare'
@@ -72,6 +74,10 @@ function App() {
           </PublicOnlyRoute>
         } 
       />
+
+      {/* Password Reset (her zaman erişilebilir — email linki login'liyken de açılabilir) */}
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
 
       {/* Legal & Info Pages */}
       <Route path="/about" element={<AboutUs />} />

@@ -80,6 +80,11 @@ class User(Base):
     credit_entries = relationship("CreditLedger", back_populates="user")
     campaigns = relationship("Campaign", back_populates="user")
     usage_logs = relationship("UsageLog", back_populates="user")
+    password_reset_tokens = relationship(
+        "PasswordResetToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 
 class Subscription(Base):
@@ -229,3 +234,37 @@ class LemonSqueezyWebhookEvent(Base):
     processed_at = Column(DateTime, nullable=True)
     processing_error = Column(Text, nullable=True)
     received_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+# ============================================
+# ŞİFRE SIFIRLAMA — ACTIVE (oturum #8.3)
+# ============================================
+
+class PasswordResetToken(Base):
+    """
+    Şifre sıfırlama token'ları.
+
+    Güvenlik:
+      - Ham token (secrets.token_urlsafe) yalnızca kullanıcıya email ile gider.
+      - DB'ye yalnızca SHA256 hash yazılır → DB sızsa bile token kullanılamaz.
+        (LS webhook idempotency'sindeki SHA256 mantığının aynısı.)
+      - 1 saat geçerli (expires_at), tek kullanımlık (used).
+      - Yeni token üretilince kullanıcının eski kullanılmamış token'ları
+        geçersiz kılınır (used=True).
+    """
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String(64), unique=True, nullable=False, index=True)  # SHA256 hex
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # İlişkiler
+    user = relationship("User", back_populates="password_reset_tokens")
+
+    @property
+    def is_valid(self) -> bool:
+        """Token kullanılmamış ve süresi dolmamış mı?"""
+        return (not self.used) and self.expires_at > datetime.utcnow()

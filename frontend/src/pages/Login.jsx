@@ -92,7 +92,7 @@ function Login() {
             <div style={{ marginBottom: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <label style={{ fontSize: '14px', fontWeight: '500' }}>{t('auth.password')}</label>
-                <a href="#" style={{ fontSize: '13px', color: 'var(--color-accent-cyan)', textDecoration: 'none' }}>{t('auth.forgotPassword')}</a>
+                <Link to="/forgot-password" style={{ fontSize: '13px', color: 'var(--color-accent-cyan)', textDecoration: 'none' }}>{t('auth.forgotPassword')}</Link>
               </div>
               <div style={{ position: 'relative' }}>
                 <Lock style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', width: '20px', height: '20px', color: 'var(--color-text-muted)' }} />
