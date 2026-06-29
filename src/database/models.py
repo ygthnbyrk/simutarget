@@ -28,6 +28,10 @@ class Plan(Base):
     # Lemon Squeezy entegrasyonu (oturum #7.9) — ACTIVE
     lemonsqueezy_variant_id = Column(String(100), unique=True, nullable=True, index=True)
 
+    # Yıllık plan (oturum #8.4)
+    price_yearly = Column(Numeric(10, 2), nullable=True)
+    lemonsqueezy_yearly_variant_id = Column(String(100), unique=True, nullable=True, index=True)
+
     # İlişkiler
     subscriptions = relationship("Subscription", back_populates="plan")
 
