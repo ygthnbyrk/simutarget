@@ -751,7 +751,10 @@ def _handle_subscription_created(payload: dict, db: Session):
 
     # Telegram bildirimi (fire-and-forget)
     try:
-        amount_usd = float(plan.price_monthly) if plan.price_monthly else None
+        if billing_period == "yearly" and plan.price_yearly:
+            amount_usd = float(plan.price_yearly)
+        else:
+            amount_usd = float(plan.price_monthly) if plan.price_monthly else None
         notify_new_subscription(
             email=user.email,
             plan=plan.name,
@@ -993,7 +996,10 @@ def _handle_subscription_payment_success(payload: dict, db: Session):
                 try:
                     user = db.query(User).filter(User.id == sub.user_id).first()
                     if user:
-                        amount_usd = float(plan.price_monthly) if plan.price_monthly else None
+                        if sub.billing_period == "yearly" and plan.price_yearly:
+                            amount_usd = float(plan.price_yearly)
+                        else:
+                            amount_usd = float(plan.price_monthly) if plan.price_monthly else None
                         notify_new_subscription(
                             email=user.email,
                             plan=plan.name,

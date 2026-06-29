@@ -209,7 +209,11 @@ function Pricing() {
                     background: plan.popular ? 'rgba(6, 182, 212, 0.1)' : 'transparent', borderLeft: '1px solid var(--color-border)' }}>
                     {plan.name}
                     <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: '400', marginTop: '4px' }}>
-                      {plan.isCustom ? t('pricing.customPricing') : `$${plan.price}${t('pricing.perMonth')}`}
+                      {plan.isCustom
+                        ? t('pricing.customPricing')
+                        : plan.slug === 'disposable'
+                          ? `$${plan.price}${t('pricing.perTest')}`
+                          : `$${getPrice(plan)}${billingPeriod === 'yearly' ? t('pricing.perYear') : t('pricing.perMonth')}`}
                     </div>
                   </div>
                 ))}
