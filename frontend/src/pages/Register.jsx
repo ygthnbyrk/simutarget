@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { motion } from 'framer-motion'
@@ -6,12 +6,20 @@ import { GoogleLogin } from '@react-oauth/google'
 import { useTranslation } from 'react-i18next'
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Loader2, Check } from 'lucide-react'
 import useAuthStore from '../stores/authStore'
+import TurnstileWidget from '../components/TurnstileWidget'
 import logoNavbar from '../assets/simutarget-logo-navbar.png'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
+const turnstileEnabled = !!TURNSTILE_SITE_KEY
+
+// İsimde reddedilecek desenler (backend _validate_name ile simetrik — anlık geri bildirim)
+const NAME_BANNED = /(https?:\/\/|www\.|\.com|\.net|\.org|\.ru|\.xyz|\.io|bit\.ly|t\.me|telegram|@|<|>)/i
 
 function Register() {
   const [showPassword, setShowPassword] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const turnstileRef = useRef(null)
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { register: registerUser, loginWithGoogle, isLoading, error, clearError } = useAuthStore()
@@ -26,7 +34,11 @@ function Register() {
 
   const onSubmit = async (data) => {
     clearError()
-    const result = await registerUser(data.email, data.password, data.name)
+    if (turnstileEnabled && !turnstileToken) return
+    const result = await registerUser(data.email, data.password, data.name, turnstileToken, data.website)
+    // Token tek kullanımlık — sonuç ne olursa olsun taze token için reset et
+    turnstileRef.current?.reset()
+    setTurnstileToken('')
     if (result.success) navigate('/dashboard')
   }
 
@@ -86,12 +98,37 @@ function Register() {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)}>
+            {/* Honeypot — gizli alan; gerçek kullanıcı görmez/doldurmaz, bot doldurur */}
+            <input
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              {...register('website')}
+              style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '1px', height: '1px', opacity: 0 }}
+            />
+
             {/* Name */}
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>{t('auth.fullName')}</label>
               <div style={{ position: 'relative' }}>
                 <User style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', width: '20px', height: '20px', color: 'var(--color-text-muted)' }} />
-                <input type="text" {...register('name', { required: true })} className="input" style={{ paddingLeft: '48px' }} placeholder={t('auth.namePlaceholder')} />
+                <input
+                  type="text"
+                  {...register('name', {
+                    required: 'Please enter your name.',
+                    validate: (value) => {
+                      const s = (value || '').trim()
+                      if (s.length < 2) return 'Please enter your name.'
+                      if (s.length > 50) return 'Name is too long (max 50 characters).'
+                      if (NAME_BANNED.test(s)) return 'Name contains invalid characters.'
+                      return true
+                    },
+                  })}
+                  className="input"
+                  style={{ paddingLeft: '48px' }}
+                  placeholder={t('auth.namePlaceholder')}
+                />
               </div>
               {errors.name && <p style={{ marginTop: '8px', fontSize: '13px', color: 'var(--color-danger)' }}>{errors.name.message}</p>}
             </div>
@@ -133,8 +170,11 @@ function Register() {
               )}
             </div>
 
+            {/* Cloudflare Turnstile (oturum #9.0) */}
+            <TurnstileWidget ref={turnstileRef} onVerify={setTurnstileToken} />
+
             {/* Submit */}
-            <button type="submit" disabled={isLoading} className="btn btn-primary" style={{ width: '100%', padding: '16px', fontSize: '16px' }}>
+            <button type="submit" disabled={isLoading || (turnstileEnabled && !turnstileToken)} className="btn btn-primary" style={{ width: '100%', padding: '16px', fontSize: '16px' }}>
               {isLoading ? (
                 <><Loader2 style={{ width: '20px', height: '20px', animation: 'spin 1s linear infinite' }} /> {t('auth.creatingAccount')}</>
               ) : (

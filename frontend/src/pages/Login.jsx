@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { motion } from 'framer-motion'
@@ -6,12 +6,17 @@ import { GoogleLogin } from '@react-oauth/google'
 import { useTranslation } from 'react-i18next'
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react'
 import useAuthStore from '../stores/authStore'
+import TurnstileWidget from '../components/TurnstileWidget'
 import logoNavbar from '../assets/simutarget-logo-navbar.png'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
+const turnstileEnabled = !!TURNSTILE_SITE_KEY
 
 function Login() {
   const [showPassword, setShowPassword] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const turnstileRef = useRef(null)
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { login, loginWithGoogle, isLoading, error, clearError } = useAuthStore()
@@ -19,7 +24,11 @@ function Login() {
 
   const onSubmit = async (data) => {
     clearError()
-    const result = await login(data.email, data.password)
+    if (turnstileEnabled && !turnstileToken) return
+    const result = await login(data.email, data.password, turnstileToken)
+    // Token tek kullanımlık — yanlış şifre retry'ı için taze token al
+    turnstileRef.current?.reset()
+    setTurnstileToken('')
     if (result.success) navigate('/dashboard')
   }
 
@@ -104,8 +113,11 @@ function Login() {
               </div>
             </div>
 
+            {/* Cloudflare Turnstile (oturum #9.0) */}
+            <TurnstileWidget ref={turnstileRef} onVerify={setTurnstileToken} />
+
             {/* Submit */}
-            <button type="submit" disabled={isLoading} className="btn btn-primary" style={{ width: '100%', padding: '16px', fontSize: '16px' }}>
+            <button type="submit" disabled={isLoading || (turnstileEnabled && !turnstileToken)} className="btn btn-primary" style={{ width: '100%', padding: '16px', fontSize: '16px' }}>
               {isLoading ? (
                 <><Loader2 style={{ width: '20px', height: '20px', animation: 'spin 1s linear infinite' }} /> {t('auth.signingIn')}</>
               ) : (

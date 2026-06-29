@@ -2,6 +2,7 @@
 import hashlib
 import logging
 import os
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -9,6 +10,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 import bcrypt as _bcrypt
+import httpx
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from src.database.connection import get_db
@@ -35,6 +37,10 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "https://simutarget.ai")
 PASSWORD_RESET_EXPIRE_HOURS = 1
 MIN_PASSWORD_LENGTH = 8
 
+# Cloudflare Turnstile (oturum #9.0 — bot koruması)
+TURNSTILE_SECRET_KEY = os.getenv("TURNSTILE_SECRET_KEY", "")
+TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+
 security = HTTPBearer()
 
 
@@ -44,10 +50,15 @@ class UserRegister(BaseModel):
     email: str
     name: str
     password: str
+    # Cloudflare Turnstile token (oturum #9.0)
+    turnstile_token: Optional[str] = None
+    # Honeypot — gerçek kullanıcı boş bırakır, bot doldurur. Doluysa kayıt reddedilir.
+    website: Optional[str] = ""
 
 class UserLogin(BaseModel):
     email: str
     password: str
+    turnstile_token: Optional[str] = None
 
 class GoogleLoginRequest(BaseModel):
     """Frontend'den gelen Google ID token (credential)."""
@@ -56,6 +67,7 @@ class GoogleLoginRequest(BaseModel):
 class ForgotPasswordRequest(BaseModel):
     """Şifre sıfırlama talebi — kullanıcı email'ini girer."""
     email: str
+    turnstile_token: Optional[str] = None
 
 class ResetPasswordRequest(BaseModel):
     """Şifre sıfırlama tamamlama — email'deki token + yeni şifre."""
@@ -100,6 +112,92 @@ def hash_password(password: str) -> str:
 def _hash_reset_token(raw_token: str) -> str:
     """Ham reset token'ın SHA256 hex'i — DB'ye yalnızca bu yazılır."""
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+
+# ---- Bot Koruması (oturum #9.0) ----
+
+def verify_turnstile_token(token: Optional[str]) -> bool:
+    """
+    Cloudflare Turnstile token doğrulaması (siteverify).
+
+    Davranış:
+      - TURNSTILE_SECRET_KEY tanımlı DEĞİLSE: özellik kapalı kabul edilir ve
+        doğrulama atlanır (fail-open). Böylece env var unutulursa tüm kayıt/giriş
+        akışı kilitlenmez — bot koruması düşer ama servis ayakta kalır.
+      - Secret tanımlıysa ve token boş/yoksa: başarısız (fail-closed).
+      - Secret tanımlıysa: Cloudflare'e sorulur; success=false ise başarısız.
+      - Cloudflare'e ağ hatası olursa: uyarı loglanır, fail-open (Cloudflare
+        kesintisinde meşru kullanıcılar engellenmesin). Token geçersizse zaten
+        success=false döner ve fail-closed olur; ağ hatasını bot tetikleyemez.
+    """
+    if not TURNSTILE_SECRET_KEY:
+        return True  # özellik yapılandırılmamış — doğrulamayı atla
+
+    if not token:
+        return False
+
+    try:
+        resp = httpx.post(
+            TURNSTILE_VERIFY_URL,
+            data={"secret": TURNSTILE_SECRET_KEY, "response": token},
+            timeout=5.0,
+        )
+        result = resp.json()
+        success = bool(result.get("success"))
+        if not success:
+            logger.info(f"Turnstile doğrulama başarısız: {result.get('error-codes')}")
+        return success
+    except Exception as e:
+        logger.warning(f"Turnstile siteverify çağrısı başarısız (fail-open): {e}")
+        return True
+
+
+# İsimde reddedilecek desenler: URL/link/promosyon/injection işaretleri
+_NAME_BANNED_PATTERNS = re.compile(
+    r"(https?://|www\.|\.com|\.net|\.org|\.ru|\.xyz|\.io|bit\.ly|t\.me|telegram|@|<|>)",
+    re.IGNORECASE,
+)
+
+
+def _validate_name(name: str) -> str:
+    """
+    Kayıt sırasında isim alanı doğrulaması (oturum #9.0 — spam koruması).
+
+    Bahis/casino botları isim alanına link/promosyon metni basıyor
+    ("50.000 TL bonus + 250 spin ... bit.ly/..."). Bu fonksiyon onları reddeder.
+    Temizlenmiş ismi döner; geçersizse HTTP 400 fırlatır.
+    """
+    cleaned = (name or "").strip()
+
+    if len(cleaned) < 2 or len(cleaned) > 50:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="İsim 2-50 karakter arasında olmalıdır."
+        )
+
+    # URL / link / promosyon / injection içeriği reddi
+    if _NAME_BANNED_PATTERNS.search(cleaned):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="İsim geçersiz karakterler içeriyor."
+        )
+
+    # Kontrol karakterleri / yeni satır reddi
+    if any(ord(ch) < 32 for ch in cleaned):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="İsim geçersiz karakterler içeriyor."
+        )
+
+    # İsimler ağırlıkla harf+boşluk olmalı; aşırı rakam/sembol/emoji reddi
+    letters = sum(ch.isalpha() or ch.isspace() for ch in cleaned)
+    if letters / max(len(cleaned), 1) < 0.5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="İsim geçersiz görünüyor."
+        )
+
+    return cleaned
 
 
 def get_current_user(
@@ -152,6 +250,25 @@ def get_current_admin(
 
 def register_user(data: UserRegister, db: Session) -> TokenResponse:
     """Yeni kullanıcı kaydı"""
+    # --- Bot koruması (oturum #9.0): honeypot → Turnstile → isim validasyonu ---
+    # 1. Honeypot: gerçek kullanıcı bu alanı görmez/boş bırakır; doluysa bot.
+    if data.website:
+        logger.info("Register honeypot tetiklendi — istek reddedildi.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Geçersiz kayıt isteği."
+        )
+
+    # 2. Turnstile doğrulaması
+    if not verify_turnstile_token(data.turnstile_token):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Doğrulama başarısız. Lütfen sayfayı yenileyip tekrar deneyin."
+        )
+
+    # 3. İsim validasyonu (spam/link reddi) — temizlenmiş ismi döner
+    clean_name = _validate_name(data.name)
+
     # Email kontrolü
     existing = db.query(User).filter(User.email == data.email).first()
     if existing:
@@ -163,7 +280,7 @@ def register_user(data: UserRegister, db: Session) -> TokenResponse:
     # Kullanıcı oluştur
     user = User(
         email=data.email,
-        name=data.name,
+        name=clean_name,
         password_hash=hash_password(data.password),
         role="user",
         auth_provider="email",
@@ -196,6 +313,13 @@ def register_user(data: UserRegister, db: Session) -> TokenResponse:
 
 def login_user(data: UserLogin, db: Session) -> TokenResponse:
     """Kullanıcı girişi"""
+    # Bot koruması (oturum #9.0): Turnstile doğrulaması
+    if not verify_turnstile_token(data.turnstile_token):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Doğrulama başarısız. Lütfen sayfayı yenileyip tekrar deneyin."
+        )
+
     user = db.query(User).filter(User.email == data.email).first()
     
     if not user:
@@ -241,6 +365,9 @@ def login_or_register_google(data: GoogleLoginRequest, db: Session) -> TokenResp
       - Email yoksa: yeni user oluştur, Telegram bildirimi gönder
 
     Frontend → POST /api/v1/auth/google {"credential": "<id_token>"}
+
+    Not (oturum #9.0): Bu akışa Turnstile EKLENMEDİ — Google ID token zaten
+    bot tarafından forge edilemez, ek doğrulama gereksiz sürtünme yaratır.
     """
     if not GOOGLE_CLIENT_ID:
         logger.error("GOOGLE_CLIENT_ID env var tanımlı değil!")
@@ -373,7 +500,16 @@ def forgot_password(data: ForgotPasswordRequest, db: Session) -> MessageResponse
         geçersiz kılınır (used=True).
       - Google-only kullanıcılar da sıfırlayabilir (şifre belirleyip email
         girişi ekleyebilir); google_id korunur.
+      - (oturum #9.0) Turnstile doğrulaması en başta — reset-spam koruması.
+        Bu kontrol email enumeration sızdırmaz (botu eler, email varlığını açmaz).
     """
+    # Bot koruması (oturum #9.0): Turnstile doğrulaması
+    if not verify_turnstile_token(data.turnstile_token):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Doğrulama başarısız. Lütfen sayfayı yenileyip tekrar deneyin."
+        )
+
     generic = MessageResponse(
         message="Eğer bu email adresi kayıtlıysa, şifre sıfırlama bağlantısı gönderildi."
     )

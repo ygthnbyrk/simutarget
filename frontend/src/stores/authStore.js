@@ -13,15 +13,20 @@ const useAuthStore = create(
       error: null,
 
       // Email/Password ile giriş
-      login: async (email, password) => {
+      // (oturum #9.0) turnstileToken eklendi — bot koruması
+      login: async (email, password, turnstileToken = '') => {
         set({ isLoading: true, error: null })
         try {
-          const response = await api.post('/auth/login', { email, password })
+          const response = await api.post('/auth/login', {
+            email,
+            password,
+            turnstile_token: turnstileToken,
+          })
           const { access_token, user } = response.data
-          
+
           localStorage.setItem('token', access_token)
           api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
-          
+
           set({ user, token: access_token, isAuthenticated: true, isLoading: false })
           return { success: true }
         } catch (error) {
@@ -31,16 +36,16 @@ const useAuthStore = create(
         }
       },
 
-      // Google OAuth ile giriş
+      // Google OAuth ile giriş (Turnstile yok — Google ID token zaten forge edilemez)
       loginWithGoogle: async (credential) => {
         set({ isLoading: true, error: null })
         try {
           const response = await api.post('/auth/google', { credential })
           const { access_token, user } = response.data
-          
+
           localStorage.setItem('token', access_token)
           api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
-          
+
           set({ user, token: access_token, isAuthenticated: true, isLoading: false })
           return { success: true }
         } catch (error) {
@@ -51,15 +56,22 @@ const useAuthStore = create(
       },
 
       // Email ile kayıt
-      register: async (email, password, name) => {
+      // (oturum #9.0) turnstileToken + honeypot (website) eklendi — bot koruması
+      register: async (email, password, name, turnstileToken = '', website = '') => {
         set({ isLoading: true, error: null })
         try {
-          const response = await api.post('/auth/register', { email, password, name })
+          const response = await api.post('/auth/register', {
+            email,
+            password,
+            name,
+            turnstile_token: turnstileToken,
+            website, // honeypot — gerçek kullanıcıda boş
+          })
           const { access_token, user } = response.data
-          
+
           localStorage.setItem('token', access_token)
           api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
-          
+
           set({ user, token: access_token, isAuthenticated: true, isLoading: false })
           return { success: true }
         } catch (error) {
@@ -80,7 +92,7 @@ const useAuthStore = create(
       fetchProfile: async () => {
         const token = get().token || localStorage.getItem('token')
         if (!token) return
-        
+
         try {
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`
           const response = await api.get('/auth/profile')

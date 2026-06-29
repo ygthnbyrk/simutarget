@@ -1,0 +1,21 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="SimuTarget.ai - AI-Powered Persona Testing Platform. Test your campaigns against synthetic personas before spending real money." />
+    <meta name="theme-color" content="#0a0e1a" />
+    <title>SimuTarget.ai — AI Persona Testing</title>
+    <script type="module" crossorigin src="/assets/index-xmcVlnLS.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-sOZ0lIzj.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"2c33dd69c14b41ec89d704c6b4be3cfa","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
+

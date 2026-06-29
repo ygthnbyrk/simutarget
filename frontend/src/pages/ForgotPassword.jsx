@@ -1,11 +1,15 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Mail, ArrowRight, ArrowLeft, Loader2, CheckCircle } from 'lucide-react'
-import { authAPI } from '../services/api'
+import api from '../services/api'
+import TurnstileWidget from '../components/TurnstileWidget'
 import logoNavbar from '../assets/simutarget-logo-navbar.png'
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY
+const turnstileEnabled = !!TURNSTILE_SITE_KEY
 
 function ForgotPassword() {
   const { t } = useTranslation()
@@ -13,16 +17,26 @@ function ForgotPassword() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const turnstileRef = useRef(null)
 
   const onSubmit = async (data) => {
     setError('')
+    if (turnstileEnabled && !turnstileToken) return
     setIsLoading(true)
     try {
-      await authAPI.forgotPassword(data.email)
-      // Backend her zaman generic 200 döner (enumeration koruması) — başarıda göster
+      // Backend her zaman generic 200 döner (enumeration koruması).
+      // (oturum #9.0) turnstile_token eklendi — reset-spam koruması.
+      await api.post('/auth/forgot-password', {
+        email: data.email,
+        turnstile_token: turnstileToken,
+      })
       setSubmitted(true)
     } catch (e) {
-      setError(t('auth.genericError'))
+      setError(e.response?.data?.detail || t('auth.genericError'))
+      // Token tek kullanımlık — başarısız denemede taze token al
+      turnstileRef.current?.reset()
+      setTurnstileToken('')
     } finally {
       setIsLoading(false)
     }
@@ -71,8 +85,11 @@ function ForgotPassword() {
                   </div>
                 </div>
 
+                {/* Cloudflare Turnstile (oturum #9.0) */}
+                <TurnstileWidget ref={turnstileRef} onVerify={setTurnstileToken} />
+
                 {/* Submit */}
-                <button type="submit" disabled={isLoading} className="btn btn-primary" style={{ width: '100%', padding: '16px', fontSize: '16px' }}>
+                <button type="submit" disabled={isLoading || (turnstileEnabled && !turnstileToken)} className="btn btn-primary" style={{ width: '100%', padding: '16px', fontSize: '16px' }}>
                   {isLoading ? (
                     <><Loader2 style={{ width: '20px', height: '20px', animation: 'spin 1s linear infinite' }} /> {t('auth.sending')}</>
                   ) : (
