@@ -19,7 +19,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import func, text
+from sqlalchemy import func, text, case
 from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
@@ -202,8 +202,17 @@ def get_stats(
         Subscription.status == "past_due"
     ).scalar() or 0
 
-    # MRR: aktif aboneliklerin plan_monthly toplamı
-    mrr = db.query(func.coalesce(func.sum(Plan.price_monthly), 0)).join(
+    # MRR: aktif aboneliklerin normalize edilmiş aylık geliri.
+    #   - monthly → price_monthly
+    #   - yearly  → price_yearly / 12  (yıllık indirim MRR'a doğru yansır)
+    mrr_per_sub = case(
+        (
+            Subscription.billing_period == "yearly",
+            func.coalesce(Plan.price_yearly, Plan.price_monthly * 12) / 12.0,
+        ),
+        else_=Plan.price_monthly,
+    )
+    mrr = db.query(func.coalesce(func.sum(mrr_per_sub), 0)).join(
         Subscription, Subscription.plan_id == Plan.id
     ).filter(
         Subscription.status == "active",
@@ -305,6 +314,16 @@ def get_stats(
         Plan.slug,
         Plan.price_monthly,
         func.count(Subscription.id).label("active_count"),
+        func.coalesce(func.sum(
+            case(
+                (Subscription.id.is_(None), 0),
+                (
+                    Subscription.billing_period == "yearly",
+                    func.coalesce(Plan.price_yearly, Plan.price_monthly * 12) / 12.0,
+                ),
+                else_=Plan.price_monthly,
+            )
+        ), 0).label("normalized_mrr"),
     ).outerjoin(
         Subscription,
         (Subscription.plan_id == Plan.id) &
@@ -318,12 +337,11 @@ def get_stats(
 
     plan_breakdown = []
     for row in plan_rows:
-        monthly_rev = float(row.price_monthly or 0) * row.active_count
         plan_breakdown.append(PlanBreakdown(
             plan_name=row.name,
             plan_slug=row.slug,
             active_count=row.active_count,
-            monthly_revenue_usd=round(monthly_rev, 2),
+            monthly_revenue_usd=round(float(row.normalized_mrr or 0), 2),
         ))
 
     # ===== CONVERSION FUNNEL =====
@@ -583,12 +601,17 @@ def get_recent_activity(
         Plan, Plan.id == Subscription.plan_id
     ).order_by(Subscription.created_at.desc()).limit(limit).all()
     for sub, user, plan in recent_subs:
+        if sub.billing_period == "yearly" and plan.price_yearly:
+            price_label = f"${float(plan.price_yearly):.2f}/yıl"
+        else:
+            price_label = f"${float(plan.price_monthly):.2f}/ay"
+
         if sub.status == "cancelled":
             activities.append(RecentActivityItem(
                 type="subscription_cancelled",
                 timestamp=sub.cancel_at or sub.created_at,
                 title=f"İptal: {plan.name}",
-                subtitle=f"${float(plan.price_monthly):.2f}/ay",
+                subtitle=price_label,
                 user_email=user.email,
             ))
         else:
@@ -596,7 +619,7 @@ def get_recent_activity(
                 type="subscription_created",
                 timestamp=sub.created_at,
                 title=f"Yeni abonelik: {plan.name}",
-                subtitle=f"${float(plan.price_monthly):.2f}/ay",
+                subtitle=price_label,
                 user_email=user.email,
             ))
 

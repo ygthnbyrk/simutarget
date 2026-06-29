@@ -113,6 +113,8 @@ class Subscription(Base):
     lemonsqueezy_subscription_id = Column(String(100), unique=True, nullable=True, index=True)
     lemonsqueezy_customer_id = Column(String(100), nullable=True, index=True)
     lemonsqueezy_order_id = Column(String(100), nullable=True, index=True)  # ilk order
+# Oturum #8.4: aylık/yıllık ayrımı (MRR + renewal periyodu + kredi miktarı)
+    billing_period = Column(String(20), nullable=False, default="monthly")  # "monthly" / "yearly"
 
     # İlişkiler
     user = relationship("User", back_populates="subscriptions")

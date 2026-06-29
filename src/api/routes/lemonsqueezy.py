@@ -66,6 +66,10 @@ class CheckoutRequest(BaseModel):
         ...,
         description="Plan slug: disposable, starter, pro, business"
     )
+    billing_period: str = Field(
+        "monthly",
+        description="Faturalama periyodu: 'monthly' veya 'yearly'",
+    )
     redirect_url: Optional[str] = Field(
         None,
         description="Ödeme sonrası dönülecek URL (overlay için fallback)"
@@ -114,14 +118,6 @@ async def create_checkout(
     if not plan:
         raise HTTPException(404, f"Plan bulunamadı: {request.plan_slug}")
 
-    if not plan.lemonsqueezy_variant_id:
-        raise HTTPException(
-            400,
-            f"Plan '{plan.name}' Lemon Squeezy'ye bağlı değil "
-            "(lemonsqueezy_variant_id boş). LS dashboard'da product/variant "
-            "oluşturup ID'yi plans tablosuna yazın."
-        )
-
     # Enterprise self-serve değil — atla
     if plan.slug == "enterprise":
         raise HTTPException(
@@ -130,17 +126,37 @@ async def create_checkout(
             "Lütfen sales@simutarget.ai adresine yazın."
         )
 
+    # Faturalama periyodu doğrula
+    billing_period = (request.billing_period or "monthly").lower()
+    if billing_period not in ("monthly", "yearly"):
+        raise HTTPException(400, f"Geçersiz billing_period: {request.billing_period}")
+
+    # Periyoda göre variant seç
+    if billing_period == "yearly":
+        variant_id = plan.lemonsqueezy_yearly_variant_id
+    else:
+        variant_id = plan.lemonsqueezy_variant_id
+
+    if not variant_id:
+        raise HTTPException(
+            400,
+            f"Plan '{plan.name}' için '{billing_period}' variant tanımlı değil "
+            "(LS variant ID boş). LS dashboard'da variant oluşturup plans "
+            "tablosuna yazın."
+        )
+
     # LS ile haberleş
     try:
         async with LemonSqueezyClient() as ls:
             checkout = await ls.create_checkout(
-                variant_id=plan.lemonsqueezy_variant_id,
+                variant_id=variant_id,
                 user_email=user.email,
                 user_name=user.name,
                 custom_data={
                     "user_id": user.id,
                     "plan_slug": plan.slug,
                     "plan_id": plan.id,
+                    "billing_period": billing_period,
                 },
                 redirect_url=request.redirect_url,
                 embed=True,  # Lemon.js overlay için
@@ -648,6 +664,19 @@ def _handle_subscription_created(payload: dict, db: Session):
         )
         return
 
+    # Faturalama periyodu: custom_data öncelikli, yoksa variant_id ile çıkar
+    billing_period = (custom_data.get("billing_period") or "").lower()
+    if billing_period not in ("monthly", "yearly"):
+        incoming_variant = attrs.get("variant_id")
+        if (
+            plan.lemonsqueezy_yearly_variant_id
+            and incoming_variant is not None
+            and str(incoming_variant) == str(plan.lemonsqueezy_yearly_variant_id)
+        ):
+            billing_period = "yearly"
+        else:
+            billing_period = "monthly"
+
     ls_sub_id = _get_data_id(payload)
     ls_customer_id = attrs.get("customer_id")
     ls_order_id = attrs.get("order_id")
@@ -693,6 +722,7 @@ def _handle_subscription_created(payload: dict, db: Session):
         status=_map_ls_status(attrs.get("status", "active")),
         current_period_start=period_start,
         current_period_end=period_end,
+        billing_period=billing_period,
         lemonsqueezy_subscription_id=ls_sub_id,
         lemonsqueezy_customer_id=str(ls_customer_id) if ls_customer_id is not None else None,
         lemonsqueezy_order_id=str(ls_order_id) if ls_order_id is not None else None,
@@ -700,12 +730,15 @@ def _handle_subscription_created(payload: dict, db: Session):
     db.add(subscription)
     db.flush()
 
-    # Plan kredisini yükle
+    # Plan kredisini yükle.
+    # Option A: yıllık abone 12 ay kredisini peşin alır, dönem sonuna (1 yıl) kadar geçerli.
+    credit_amount = plan.credits_monthly * 12 if billing_period == "yearly" else plan.credits_monthly
+
     credit_service = CreditService(db)
     credit_service.grant_credits(
         user_id=user.id,
-        amount=plan.credits_monthly,
-        description=f"{plan.name} aktivasyonu — {plan.credits_monthly} credit",
+        amount=credit_amount,
+        description=f"{plan.name} aktivasyonu ({billing_period}) — {credit_amount} credit",
         expires_at=period_end,
     )
 
@@ -922,7 +955,9 @@ def _handle_subscription_payment_success(payload: dict, db: Session):
     # Sadece renewal için yeni dönem + kredi yenileme
     if billing_reason == "renewal":
         new_period_start = _parse_ls_datetime(attrs.get("created_at")) or datetime.utcnow()
-        new_period_end = new_period_start + timedelta(days=30)
+        # Dönem uzunluğu faturalama periyoduna göre (yıllık 365, aylık 30 gün)
+        period_days = 365 if sub.billing_period == "yearly" else 30
+        new_period_end = new_period_start + timedelta(days=period_days)
 
         # Sadece gerçekten ileri bir tarihse güncelle (idempotency koruması)
         if new_period_start > sub.current_period_start:
@@ -932,14 +967,20 @@ def _handle_subscription_payment_success(payload: dict, db: Session):
             # Plan'ı al, krediyi yenile
             plan = db.query(Plan).filter(Plan.id == sub.plan_id).first()
             if plan:
+                # Option A: yıllıkta 12 ay peşin, aylıkta 1 ay
+                credit_amount = (
+                    plan.credits_monthly * 12
+                    if sub.billing_period == "yearly"
+                    else plan.credits_monthly
+                )
                 credit_service = CreditService(db)
                 # Önce eski dönemden kalan kredileri sıfırla
                 credit_service.expire_credits(sub.user_id)
                 # Yeni dönem kredisi
                 credit_service.grant_credits(
                     user_id=sub.user_id,
-                    amount=plan.credits_monthly,
-                    description=f"{plan.name} dönem yenileme — {plan.credits_monthly} credit",
+                    amount=credit_amount,
+                    description=f"{plan.name} dönem yenileme ({sub.billing_period}) — {credit_amount} credit",
                     expires_at=new_period_end,
                 )
 
