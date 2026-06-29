@@ -35,11 +35,13 @@ function Pricing() {
     { name: t('pricing.dedicatedManager'), disposable: false, starter: false, pro: false, business: false, enterprise: true },
   ]
 
+  // NOT: priceYearly değerleri LS'teki yıllık variant fiyatlarıyla BİREBİR aynı
+  // olmalı (aksi halde gösterilen ≠ kesilen → dispute riski). LS: ×10 (2 ay bedava).
   const planData = [
-    { slug: 'starter', name: 'Starter', price: 49.99, description: t('pricing.starterDesc'), color: '#6B7280' },
-    { slug: 'pro', name: 'Pro', price: 149.99, description: t('pricing.proDesc'), popular: true, color: '#06B6D4' },
-    { slug: 'business', name: 'Business', price: 399.99, description: t('pricing.businessDesc'), color: '#8B5CF6' },
-    { slug: 'enterprise', name: 'Enterprise', price: null, description: t('pricing.enterpriseDesc'), color: '#F59E0B', isCustom: true },
+    { slug: 'starter', name: 'Starter', price: 49.99, priceYearly: 499.90, description: t('pricing.starterDesc'), color: '#6B7280' },
+    { slug: 'pro', name: 'Pro', price: 149.99, priceYearly: 1499.90, description: t('pricing.proDesc'), popular: true, color: '#06B6D4' },
+    { slug: 'business', name: 'Business', price: 399.99, priceYearly: 3999.90, description: t('pricing.businessDesc'), color: '#8B5CF6' },
+    { slug: 'enterprise', name: 'Enterprise', price: null, priceYearly: null, description: t('pricing.enterpriseDesc'), color: '#F59E0B', isCustom: true },
   ]
 
   const tablePlans = [
@@ -50,13 +52,15 @@ function Pricing() {
   const handleSelectPlan = async (plan) => {
     if (plan.isCustom) { window.location.href = 'mailto:contact@simutarget.ai'; return }
     if (!isAuthenticated) { navigate('/register'); return }
-    const result = await subscribe(plan.slug)
+    // Disposable tek seferlik → her zaman monthly. Diğerleri toggle'a göre.
+    const period = plan.slug === 'disposable' ? 'monthly' : billingPeriod
+    const result = await subscribe(plan.slug, period)
     if (result.success) navigate('/dashboard')
   }
 
-  const getPrice = (price) => {
-    if (price === null) return null
-    return billingPeriod === 'yearly' ? (price * 12 * 0.8).toFixed(0) : price
+  const getPrice = (plan) => {
+    if (plan.price === null) return null
+    return billingPeriod === 'yearly' ? plan.priceYearly : plan.price
   }
 
   return (
@@ -90,7 +94,7 @@ function Pricing() {
               style={{ padding: '14px 28px', borderRadius: '10px', fontSize: '15px', fontWeight: '600', border: 'none', cursor: 'pointer', transition: 'all 0.2s',
                 background: billingPeriod === 'yearly' ? 'linear-gradient(135deg, var(--color-accent-cyan), var(--color-accent-purple))' : 'transparent',
                 color: billingPeriod === 'yearly' ? 'white' : 'var(--color-text-secondary)' }}>
-              {t('pricing.yearly')} <span style={{ color: billingPeriod === 'yearly' ? 'white' : 'var(--color-success)', marginLeft: '6px', fontWeight: '700' }}>-20%</span>
+              {t('pricing.yearly')} <span style={{ color: billingPeriod === 'yearly' ? 'white' : 'var(--color-success)', marginLeft: '6px', fontWeight: '700' }}>-17%</span>
             </button>
           </motion.div>
         </div>
@@ -165,7 +169,7 @@ function Pricing() {
                     <div style={{ fontSize: '28px', fontWeight: '800', lineHeight: 1 }}>{t('pricing.customPricing')}</div>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '4px' }}>
-                      <span style={{ fontSize: '48px', fontWeight: '800', lineHeight: 1 }}>${getPrice(plan.price)}</span>
+                      <span style={{ fontSize: '48px', fontWeight: '800', lineHeight: 1 }}>${getPrice(plan)}</span>
                       <span style={{ fontSize: '16px', color: 'var(--color-text-muted)' }}>{billingPeriod === 'yearly' ? t('pricing.perYear') : t('pricing.perMonth')}</span>
                     </div>
                   )}

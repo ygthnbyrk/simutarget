@@ -63,13 +63,14 @@ const useCreditStore = create((set, get) => ({
    *   6. Profile/Dashboard auto-refresh ile yeni subscription görünür
    *
    * @param {string} planSlug
+   * @param {string} billingPeriod - 'monthly' | 'yearly' (varsayılan monthly)
    * @returns {Promise<{success, checkoutUrl?, error?}>}
    */
-  subscribe: async (planSlug) => {
+  subscribe: async (planSlug, billingPeriod = 'monthly') => {
     set({ isLoading: true, error: null })
     try {
       const redirectUrl = `${window.location.origin}/dashboard?checkout=success`
-      const response = await lemonsqueezyAPI.checkout(planSlug, redirectUrl)
+      const response = await lemonsqueezyAPI.checkout(planSlug, redirectUrl, billingPeriod)
       const checkoutUrl = response.data.checkout_url
 
       // Lemon.js overlay aç (index.html'de script yüklü, window.LemonSqueezy global)
@@ -97,8 +98,8 @@ const useCreditStore = create((set, get) => ({
    * uyarı modal'ı gösterir ("Önce mevcut aboneliği iptal edin"). Burada
    * yalnızca yeni plan için checkout açılır.
    */
-  changePlan: async (planSlug) => {
-    return get().subscribe(planSlug)
+  changePlan: async (planSlug, billingPeriod = 'monthly') => {
+    return get().subscribe(planSlug, billingPeriod)
   },
 
   /**

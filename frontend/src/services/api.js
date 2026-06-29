@@ -72,11 +72,13 @@ export const lemonsqueezyAPI = {
    * Backend'den LS checkout URL al.
    * @param {string} planSlug - 'disposable' | 'starter' | 'pro' | 'business'
    * @param {string} redirectUrl - Ödeme sonrası dönülecek URL
+   * @param {string} billingPeriod - 'monthly' | 'yearly' (varsayılan monthly)
    * @returns {Promise<{checkout_url, checkout_id, plan_slug, plan_name, expires_at}>}
    */
-  checkout: (planSlug, redirectUrl) => api.post('/lemonsqueezy/checkout', {
+  checkout: (planSlug, redirectUrl, billingPeriod = 'monthly') => api.post('/lemonsqueezy/checkout', {
     plan_slug: planSlug,
     redirect_url: redirectUrl,
+    billing_period: billingPeriod,
   }),
 
   /**
