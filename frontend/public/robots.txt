@@ -1,0 +1,19 @@
+# SimuTarget — robots.txt
+User-agent: *
+Allow: /
+
+# Auth-arkası ve uygulama rotaları indekslenmesin
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /reset-password/
+
+# Checkout dönüş URL'leri
+Disallow: /*?checkout=
+
+Sitemap: https://simutarget.ai/sitemap.xml

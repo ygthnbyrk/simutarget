@@ -2,18 +2,45 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+
+    <!-- Icons -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="SimuTarget.ai - AI-Powered Persona Testing Platform. Test your campaigns against synthetic personas before spending real money." />
-    <meta name="theme-color" content="#0a0e1a" />
-    <title>SimuTarget.ai — AI Persona Testing</title>
+    <link rel="manifest" href="/site.webmanifest" />
 
-    <!-- Lemon Squeezy overlay (Oturum #8.2 — Live Mode geçişi)
-         Bu script `window.LemonSqueezy.Url.Open(url)` API'sini sağlar.
-         Frontend checkout URL aldığında bu API ile overlay açar. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a0e1a" />
+
+    <!-- Primary meta (per-route override → build-time + React 19 runtime) -->
+    <title>SimuTarget — AI Synthetic Market Research & Audience Testing</title>
+    <meta
+      name="description"
+      content="Test campaigns and creative against 500K+ AI consumer personas before launch. Synthetic market research in minutes — no panels, no privacy risk."
+    />
+    <link rel="canonical" href="https://simutarget.ai" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph (defaults; per-route enjekte edilir) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SimuTarget" />
+    <meta property="og:title" content="SimuTarget — AI Synthetic Market Research & Audience Testing" />
+    <meta property="og:description" content="Test campaigns against 500K+ AI consumer personas before launch. Results in minutes — no panels, no privacy risk." />
+    <meta property="og:url" content="https://simutarget.ai" />
+    <meta property="og:image" content="https://simutarget.ai/og-default.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SimuTarget — AI Synthetic Market Research & Audience Testing" />
+    <meta name="twitter:description" content="Test campaigns against 500K+ AI consumer personas before launch. Results in minutes — no panels, no privacy risk." />
+    <meta name="twitter:image" content="https://simutarget.ai/og-default.png" />
+
+    <!-- Lemon Squeezy overlay (Oturum #8.2 — Live Mode)
+         window.LemonSqueezy.Url.Open(url) API'sini sağlar. -->
     <script src="https://app.lemonsqueezy.com/js/lemon.js" defer></script>
   </head>
   <body>
