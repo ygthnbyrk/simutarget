@@ -1,7 +1,6 @@
 {
   "rewrites": [
-    { "source": "**", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
-  "cleanUrls": false,
   "trailingSlash": false
 }
