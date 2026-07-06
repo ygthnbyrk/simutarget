@@ -1,4 +1,6 @@
 """FastAPI application for SimuTarget.ai."""
+import os
+
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -17,22 +19,45 @@ from src.api.auth import (
 from src.database.models import User
 from src.database.credit_service import CreditService, FeatureGateService
 
+# ---- Ortam ayrimi ----
+# Coolify'da ENVIRONMENT=production tanimli. Tanimli degilse guvenli tarafta
+# kalmak icin production varsayiyoruz (docs kapali olur).
+ENV = os.getenv("ENVIRONMENT", "production").lower()
+IS_PROD = ENV == "production"
+
 # Create FastAPI app
+# Production'da API dokumantasyonu (Swagger/ReDoc/OpenAPI) kapatilir —
+# endpoint semasini disariya sizdirmamak icin. Dev'de acik kalir.
 app = FastAPI(
     title="SimuTarget.ai API",
     description="AI-Powered Synthetic Market Research Platform",
     version="0.2.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=None if IS_PROD else "/docs",
+    redoc_url=None if IS_PROD else "/redoc",
+    openapi_url=None if IS_PROD else "/openapi.json",
 )
 
 # CORS middleware
+# allow_origins="*" yerine sadece kendi origin'lerimize izin veriyoruz.
+# allow_credentials=False kaldi (token Authorization header'da tasiniyor,
+# cookie kullanilmiyor).
+ALLOWED_ORIGINS = [
+    "https://www.simutarget.ai",
+    "https://simutarget.ai",
+]
+# Dev ortaminda local frontend'e de izin ver (uretimde eklenmez).
+if not IS_PROD:
+    ALLOWED_ORIGINS += [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
@@ -53,7 +78,7 @@ async def root():
         "name": "SimuTarget.ai API",
         "version": "0.2.0",
         "status": "running",
-        "docs": "/docs",
+        "docs": "/docs" if not IS_PROD else "disabled",
     }
 
 
