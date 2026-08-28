@@ -23,7 +23,7 @@ from sqlalchemy import func
 
 from src.database.connection import get_db
 from src.database.models import User
-from src.api.auth import get_current_user
+from src.api.auth import get_current_admin
 from src.agent_mining.models import (
     Persona, ReferenceCampaign, AgentDecision,
     SegmentType, CampaignStatus, DecisionType,
@@ -184,7 +184,7 @@ async def create_and_run_campaign(
     data: AgentCampaignCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin),
 ):
     """
     Yeni Agent Mining kampanyası oluşturur ve arka planda çalıştırır.
@@ -242,7 +242,7 @@ async def list_campaigns(
     segment: Optional[str] = None,
     limit: int = 20,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin),
 ):
     """Tüm Agent Mining kampanyalarını listele."""
     query = db.query(ReferenceCampaign).order_by(ReferenceCampaign.created_at.desc())
@@ -281,7 +281,7 @@ async def get_campaign(
     campaign_id: str,
     limit_decisions: int = 50,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin),
 ):
     """Kampanya detayı ve karar örneklerini getir."""
     campaign = db.query(ReferenceCampaign).filter(
@@ -343,7 +343,7 @@ async def get_campaign(
 async def get_analytics(
     segment: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin),
 ):
     """
     Genel segment analizi — toplam kararlar, satın alma oranları,
@@ -425,7 +425,7 @@ async def get_analytics(
 
 @router.get("/rules")
 async def get_rules(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin),
 ):
     """Kural motoru verisi — agent_mining_rules.json"""
     if not os.path.exists(RULES_FILE):
@@ -448,7 +448,7 @@ async def rerun_campaign(
     persona_count: int = 100,
     segment: str = "TR",
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin),
 ):
     """Mevcut bir kampanyayı yeniden çalıştır."""
     campaign = db.query(ReferenceCampaign).filter(

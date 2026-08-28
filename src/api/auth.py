@@ -25,7 +25,17 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # JWT Ayarları
-SECRET_KEY = os.getenv("SECRET_KEY", "simutarget-secret-key-degistir-bunu")
+# Güvensiz bir default'a asla düşülmez: SECRET_KEY env'de tanımlı değilse
+# uygulama başlarken hemen patlar (production'da sessizce zayıf bir anahtarla
+# imzalamaktansa çökmek daha güvenli).
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY ortam değişkeni tanımlı değil. JWT imzalamak için "
+        "gerekli — .env dosyasına (veya deploy ortamındaki env ayarlarına) "
+        "rastgele, güçlü bir SECRET_KEY ekleyin. Örnek üretmek için: "
+        "python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 saat
 
