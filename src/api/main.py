@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from .routes import (
     personas, campaigns, health, subscriptions,
-    agent_mining, paddle, lemonsqueezy, admin,
+    agent_mining, lemonsqueezy, admin,
 )
 from src.database.connection import get_db
 from src.api.auth import (
@@ -67,7 +67,6 @@ app.include_router(personas.router, prefix="/api/v1/personas", tags=["Personas"]
 app.include_router(campaigns.router, prefix="/api/v1/campaigns", tags=["Campaigns"])
 app.include_router(subscriptions.router, prefix="/api/v1/subscriptions", tags=["Subscriptions"])
 app.include_router(agent_mining.router, prefix="/api/v1/agent-mining", tags=["Agent Mining"])
-app.include_router(paddle.router, prefix="/api/v1/paddle", tags=["Paddle"])
 app.include_router(lemonsqueezy.router, prefix="/api/v1/lemonsqueezy", tags=["Lemon Squeezy"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 

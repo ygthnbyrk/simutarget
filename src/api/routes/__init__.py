@@ -1,6 +1,6 @@
 """API routes."""
 
-from . import personas, campaigns, health, subscriptions, agent_mining, paddle
+from . import personas, campaigns, health, subscriptions, agent_mining
 
 __all__ = [
     "personas",
@@ -8,5 +8,4 @@ __all__ = [
     "health",
     "subscriptions",
     "agent_mining",
-    "paddle",
 ]

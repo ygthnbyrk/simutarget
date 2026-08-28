@@ -5,7 +5,7 @@ Fire-and-forget pattern: bildirim hatası asıl iş akışını bozmaz.
 Production'da TELEGRAM_ENABLED env var ile açılır/kapatılır (kill switch).
 
 Yer: backend/src/services/notification_service.py
-Convention: lemonsqueezy_service.py, paddle_service.py ile aynı
+Convention: lemonsqueezy_service.py ile aynı
 
 Kullanım:
     from src.services.notification_service import notify_new_user
